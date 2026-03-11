@@ -93,7 +93,7 @@ void REPL::run() {
                 try {
                     auto lib_cmd = info.parser(args);
                     auto result = session_->execute(lib_cmd);
-                    renderers::render(result);
+                    renderers::render_result(result, session_->schema());
                 } catch (const std::exception& e) {
                     std::cout << "Error: " << e.what() << "\n";
                 }

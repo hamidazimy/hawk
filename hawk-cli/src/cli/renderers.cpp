@@ -4,49 +4,87 @@
 
 #include <hawk/hawk.hpp>
 
+#include <iomanip>
 #include <iostream>
+#include <string>
+#include <vector>
 
 namespace hawk::cli {
 namespace renderers {
 
-template <typename> inline constexpr bool always_false = false;
+namespace {
 
-void render(const hawk::CommandResult& result, std::ostream& sout) {
-    std::visit([&sout](auto&& res) {
-        using T = std::decay_t<decltype(res)>;
-        if constexpr (std::is_same_v<T, hawk::RowsResult>) {
-            render_rows(res, sout);
-        } else if constexpr (std::is_same_v<T, hawk::CountResult>) {
-            render_count(res, sout);
-        } else if constexpr (std::is_same_v<T, hawk::SuccessResult>) {
-            render_success(res, sout);
-        } else if constexpr (std::is_same_v<T, hawk::ErrorResult>) {
-            render_error(res, sout);
-        } else {
-            static_assert(always_false<T>, "Unhandled CommandResult type");
+void render_impl(const hawk::RowsResult& res,
+                 const hawk::Schema& schema,
+                 std::ostream& sout)
+{
+        std::vector<int> column_widths(schema.column_count(), 0);
+    for (std::size_t i = 0; i < schema.column_count(); ++i) {
+        column_widths[i] = std::max(column_widths[i], static_cast<int>(schema.column_names()[i].size()));
+    }
+    for (const auto& row : res.rows) {
+        for (std::size_t i = 0; i < row.fields().size(); ++i) {
+            column_widths[i] = std::max(column_widths[i], static_cast<int>(row[i].size()));
         }
-    }, result);
-}
-
-void render_rows(const hawk::RowsResult& rows, std::ostream& sout) {
-    for (const auto& row : rows.rows) {
-        for (const auto& field : row.fields()) {
-            sout << field << " ";
+    }
+    for (std::size_t i = 0; i < schema.column_count(); ++i) {
+        sout << std::setw(column_widths[i]) << std::setfill('-') << "" << " ";
+    }
+    sout << "\n" << std::setfill(' ');
+    for (std::size_t i = 0; i < schema.column_count(); ++i) {
+        sout << std::setw(column_widths[i]) << std::left << schema.column_names()[i] << " ";
+    }
+    sout << "\n";
+    for (std::size_t i = 0; i < schema.column_count(); ++i) {
+        sout << std::setw(column_widths[i]) << std::setfill('-') << "" << " ";
+    }
+    sout << "\n" << std::setfill(' ');
+    for (const auto& row : res.rows) {
+        for (std::size_t i = 0; i < row.fields().size(); ++i) {
+            sout << std::setw(column_widths[i]) << std::left << row[i] << " ";
         }
         sout << "\n";
     }
 }
 
-void render_count(const hawk::CountResult& count, std::ostream& sout) {
-    sout << "Count: " << count.count << "\n";
+void render_impl(const hawk::CountResult& res,
+                 const hawk::Schema&,
+                 std::ostream& sout)
+{
+    sout << "Count: " << res.count << "\n";
 }
 
-void render_success(const hawk::SuccessResult& success, std::ostream& sout) {
-    sout << "Command executed successfully in " << success.execution_time_ms << " ms.\n";
+void render_impl(const hawk::SuccessResult& res,
+                 const hawk::Schema&,
+                 std::ostream& sout)
+{
+    sout << "Command executed successfully in " << res.execution_time_ms << " ms.\n";
 }
 
-void render_error(const hawk::ErrorResult& error, std::ostream& sout) {
-    sout << hawk::cli::error_log("Error: " + error.message) << "\n";
+void render_impl(const hawk::ErrorResult& res,
+                 const hawk::Schema&,
+                 std::ostream& sout)
+{
+    render_error(res.message, sout);
+}
+
+} // anonymous namespace
+
+void render_result(
+    const hawk::CommandResult& result,
+    const hawk::Schema& schema,
+    std::ostream& sout)
+{
+    std::visit(
+        [&](const auto& res) {
+            render_impl(res, schema, sout);
+        },
+        result
+    );
+}
+
+void render_error(const std::string& message, std::ostream& sout) {
+    sout << hawk::cli::error_log("Error: " + message) << "\n";
 }
 
 } // namespace renderers
