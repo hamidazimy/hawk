@@ -16,6 +16,10 @@ void render(const hawk::CommandResult& result, std::ostream& sout) {
         using T = std::decay_t<decltype(res)>;
         if constexpr (std::is_same_v<T, hawk::RowsResult>) {
             render_rows(res, sout);
+        } else if constexpr (std::is_same_v<T, hawk::CountResult>) {
+            render_count(res, sout);
+        } else if constexpr (std::is_same_v<T, hawk::SuccessResult>) {
+            render_success(res, sout);
         } else if constexpr (std::is_same_v<T, hawk::ErrorResult>) {
             render_error(res, sout);
         } else {
@@ -31,6 +35,14 @@ void render_rows(const hawk::RowsResult& rows, std::ostream& sout) {
         }
         sout << "\n";
     }
+}
+
+void render_count(const hawk::CountResult& count, std::ostream& sout) {
+    sout << "Count: " << count.count << "\n";
+}
+
+void render_success(const hawk::SuccessResult& success, std::ostream& sout) {
+    sout << "Command executed successfully in " << success.execution_time_ms << " ms.\n";
 }
 
 void render_error(const hawk::ErrorResult& error, std::ostream& sout) {

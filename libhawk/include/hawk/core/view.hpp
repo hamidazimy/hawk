@@ -17,6 +17,8 @@ public:
 
     std::size_t map_to_physical_index(std::size_t visible_row_index) const;
 
+    View filter(std::function<bool(std::size_t source_row)> predicate) const;
+
 private:
     std::vector<std::size_t> indices_;
 };

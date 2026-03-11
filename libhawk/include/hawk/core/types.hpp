@@ -10,6 +10,15 @@ enum class LineEnding {
     UNKNOWN
 };
 
+enum class FilterOp {
+    EQ,  // ==
+    NEQ, // !=
+    GT,  // >
+    LT,  // <
+    GTE, // >=
+    LTE  // <=
+};
+
 } // namespace hawk
 
 #endif // HAWK_TYPES_HPP

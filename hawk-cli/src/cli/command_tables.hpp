@@ -11,13 +11,21 @@
 
 namespace hawk::cli {
 
-inline const std::array<LibCommandInfo, 1> lib_command_table{{
+inline const std::array<LibCommandInfo, 2> lib_command_table{{
     {
         "head",
         "head [n]",
         "Show the first n rows (default 10)",
         [](std::string_view args) -> LibCommand {
             return parsers::head(args);
+        }
+    },
+    {
+        "filter",
+        "filter <column> <operator> <value>",
+        "Filter rows based on a condition",
+        [](std::string_view args) -> LibCommand {
+            return parsers::filter(args);
         }
     }
 }};

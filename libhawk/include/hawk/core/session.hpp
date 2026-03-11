@@ -40,6 +40,7 @@ public:
 
     std::size_t visible_row_count() const noexcept;
     Row get_row(std::size_t visible_row_index) const;
+    Row get_physical_row(std::size_t physical_row_index) const;
 
     CommandResult execute(const LibCommand& command);
 
@@ -50,7 +51,10 @@ private:
     );
 
     CommandResult execute_impl(const HeadCommand&);
+    CommandResult execute_impl(const FilterCommand&);
     // Add new overloads here when commands are introduced.
+
+    bool evaluate(const std::string& lhs, FilterOp op, const std::string& rhs) const;
 
     // ----- Internal Helpers -----
     View make_base_view() const;

@@ -10,6 +10,7 @@ namespace parsers {
 
 // Lib command parsers
 HeadCommand head(std::string_view);
+FilterCommand filter(std::string_view);
 
 // Cli command parsers
 inline CliCommand help(std::string_view) { return CliCommandHelp{}; }

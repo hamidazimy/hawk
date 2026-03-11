@@ -19,6 +19,8 @@ public:
 
     void set_column_names(const std::vector<std::string>& names);
 
+    std::optional<std::size_t> find_column(const std::string& name) const;
+
 private:
     std::size_t column_count_;
     std::vector<std::string> column_names_;

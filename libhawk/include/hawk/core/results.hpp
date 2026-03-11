@@ -13,12 +13,22 @@ struct RowsResult {
     std::vector<Row> rows;
 };
 
+struct CountResult {
+    std::size_t count;
+};
+
+struct SuccessResult {
+    double execution_time_ms;
+};
+
 struct ErrorResult {
     std::string message;
 };
 
 using CommandResult = std::variant<
     RowsResult,
+    CountResult,
+    SuccessResult,
     ErrorResult
 >;
 

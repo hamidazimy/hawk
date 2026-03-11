@@ -91,10 +91,14 @@ std::size_t Session::visible_row_count() const noexcept {
 }
 
 Row Session::get_row(std::size_t visible_row_index) const {
-    auto physical_index = current_view_.map_to_physical_index(visible_row_index);
-    auto line = std::string(source_->get_line(physical_index));
+    auto physical_row_index = current_view_.map_to_physical_index(visible_row_index);
+    return get_physical_row(physical_row_index);
+}
+
+Row Session::get_physical_row(std::size_t physical_row_index) const {
+    auto line = std::string(source_->get_line(physical_row_index));
     auto fields = utils::split(line, config_.delimiter.value());
-    return Row(visible_row_index, fields);
+    return Row(physical_row_index, fields);
 }
 
 CommandResult Session::execute(const LibCommand& command) {
@@ -118,6 +122,62 @@ CommandResult Session::execute_impl(const HeadCommand& cmd) {
     }
 
     return RowsResult{std::move(rows)};
+}
+
+CommandResult Session::execute_impl(const FilterCommand& cmd) {
+    auto column_index = schema_.find_column(cmd.column);
+
+    if (!column_index) {
+        return ErrorResult{"Unknown column: " + cmd.column};
+    }
+
+    current_view_ = current_view_.filter(
+        [&](std::size_t row_index) {
+            Row row = get_physical_row(row_index);
+            return evaluate(std::string{row[*column_index]}, cmd.op, cmd.value);
+        }
+    );
+
+    return CountResult{current_view_.size()};
+}
+
+bool Session::evaluate(const std::string& lhs,
+                       FilterOp op,
+                       const std::string& rhs) const
+{
+    auto try_parse_double = [](const std::string& s, double& out) -> bool {
+        char* end = nullptr;
+        out = std::strtod(s.c_str(), &end);
+        return end != s.c_str() && *end == '\0';
+    };
+
+    double lhs_num;
+    double rhs_num;
+
+    bool lhs_is_num = try_parse_double(lhs, lhs_num);
+    bool rhs_is_num = try_parse_double(rhs, rhs_num);
+
+    if (lhs_is_num && rhs_is_num) {
+        switch (op) {
+            case FilterOp::EQ:  return lhs_num == rhs_num;
+            case FilterOp::NEQ: return lhs_num != rhs_num;
+            case FilterOp::GT:  return lhs_num >  rhs_num;
+            case FilterOp::LT:  return lhs_num <  rhs_num;
+            case FilterOp::GTE: return lhs_num >= rhs_num;
+            case FilterOp::LTE: return lhs_num <= rhs_num;
+        }
+    }
+
+    switch (op) {
+        case FilterOp::EQ:  return lhs == rhs;
+        case FilterOp::NEQ: return lhs != rhs;
+        case FilterOp::GT:  return lhs >  rhs;
+        case FilterOp::LT:  return lhs <  rhs;
+        case FilterOp::GTE: return lhs >= rhs;
+        case FilterOp::LTE: return lhs <= rhs;
+    }
+
+    return false;
 }
 
 } // namespace hawk
