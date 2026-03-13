@@ -37,35 +37,28 @@ public:
     std::vector<std::string> sample_lines(std::size_t max_samples) const;
 
 private:
-    enum class StorageMode {
-        InMemory,
-        Mapped
-    };
+    enum class StorageMode { InMemory, Mapped };
 
 private:
     void open_file();
     void detect_storage_mode();
     void load_into_memory();
-    void map_file();
-    void build_index();
+    void map_file_and_build_index();
     void detect_line_ending();
 
 private:
     std::string path_;
-
-    StorageMode mode_ = StorageMode::InMemory;
-
+    StorageMode mode_ = StorageMode::Mapped;
     LogMetadata metadata_;
+    std::uint64_t file_size_ = 0;
+    bool has_crlf_ = false;
 
     // small-file InMemory mode
-    std::vector<std::string> lines_;
+    std::string file_buffer_;
+    std::vector<std::string_view> lines_;
 
     // large-file Mapped mode
     platform::FileMapping mapping_;
-
-    const char* data_ = nullptr;
-    std::uint64_t file_size_ = 0;
-
     std::vector<std::uint64_t> line_offsets_;
 };
 
