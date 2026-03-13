@@ -7,5 +7,7 @@
 #include <hawk/core/commands.hpp>
 #include <hawk/core/results.hpp>
 
+#include <hawk/platform/file_mapping.hpp>
+
 #include <hawk/utils/format_inference.hpp>
 #include <hawk/utils/utils.hpp>

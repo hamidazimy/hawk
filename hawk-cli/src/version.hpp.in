@@ -1,0 +1,15 @@
+#ifndef HAWK_CLI_VERSION_HPP
+#define HAWK_CLI_VERSION_HPP
+
+#include <string_view>
+
+namespace hawk::version {
+
+inline constexpr std::string_view PROJECT = "@PROJECT_VERSION@";
+inline constexpr std::string_view MAJOR   = "@PROJECT_VERSION_MAJOR@";
+inline constexpr std::string_view MINOR   = "@PROJECT_VERSION_MINOR@";
+inline constexpr std::string_view PATCH   = "@PROJECT_VERSION_PATCH@";
+
+}
+
+#endif // HAWK_CLI_VERSION_HPP

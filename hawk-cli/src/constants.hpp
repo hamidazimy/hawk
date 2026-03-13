@@ -1,24 +1,24 @@
 #ifndef HAWK_CLI_CONSTANTS_HPP
 #define HAWK_CLI_CONSTANTS_HPP
 
+#include <version.hpp>
+
 #include <string>
 #include <string_view>
 
 namespace hawk::cli {
 namespace constants {
 
-inline constexpr std::string_view VERSION_MAJOR{"0"};
-inline constexpr std::string_view VERSION_MINOR{"1"};
-inline constexpr std::string_view VERSION_PATCH{"0"};
-
-inline const std::string VERSION{
-    std::string(VERSION_MAJOR) + "." +
-    std::string(VERSION_MINOR) + "." +
-    std::string(VERSION_PATCH)
-};
+inline const std::string_view ASCII_LOGO = R"(
+                          _
+      /\  /\__ ___      _| | __
+     / /_/ / _` \ \ /\ / / |/ /
+    / __  / (_| |\ V  V /|   <
+    \/ /_/ \__,_| \_/\_/ |_|\_\
+)";
 
 inline const std::string VERSION_STR{
-    "Hawk Log Analyzer v" + VERSION
+    "Hawk Log Analyzer v" + std::string(hawk::version::PROJECT)
 };
 
 inline const std::string WELCOME_MSG{

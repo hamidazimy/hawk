@@ -2,6 +2,7 @@
 #define HAWK_LOG_FILE_HPP
 
 #include <hawk/core/types.hpp>
+#include <hawk/platform/file_mapping.hpp>
 
 #include <cstdint>
 #include <string>
@@ -18,7 +19,7 @@ struct LogMetadata {
 class LogFile {
 public:
     explicit LogFile(const std::string& path);
-    ~LogFile();
+    ~LogFile() = default;
 
     LogFile(const LogFile&) = delete;
     LogFile& operator=(const LogFile&) = delete;
@@ -31,7 +32,7 @@ public:
 
     std::uint64_t row_count() const noexcept { return metadata_.line_count; }
 
-    std::string_view get_line(std::uint64_t row) const;
+    std::string_view get_line(std::uint64_t idx) const;
 
     std::vector<std::string> sample_lines(std::size_t max_samples) const;
 
@@ -56,11 +57,12 @@ private:
 
     LogMetadata metadata_;
 
-    // small-file mode
+    // small-file InMemory mode
     std::vector<std::string> lines_;
 
-    // mmap mode
-    int fd_ = -1;
+    // large-file Mapped mode
+    platform::FileMapping mapping_;
+
     const char* data_ = nullptr;
     std::uint64_t file_size_ = 0;
 

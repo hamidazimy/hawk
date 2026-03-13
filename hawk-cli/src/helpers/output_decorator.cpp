@@ -1,5 +1,7 @@
 #include "output_decorator.hpp"
 
+#include <cstdint>
+
 namespace hawk::cli {
 
 namespace sgr {
@@ -22,7 +24,7 @@ std::string rgb(const std::string& rgb_code) {
         }
     }
 
-    u_int8_t r, g, b;
+    uint8_t r = 0, g = 0, b = 0;
     if (rgb_code.length() == 4) {
         r = stoi(rgb_code.substr(1, 1) + rgb_code.substr(1, 1), 0 , 16);
         g = stoi(rgb_code.substr(2, 1) + rgb_code.substr(2, 1), 0 , 16);

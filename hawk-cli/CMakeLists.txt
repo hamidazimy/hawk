@@ -1,6 +1,7 @@
-cmake_minimum_required(VERSION 3.15)
-
+# ------------------------------------------------------------------------------
 # hawk-cli - Command-line interface
+# ------------------------------------------------------------------------------
+
 add_executable(hawk-cli
     src/main.cpp
     src/args.cpp
@@ -17,11 +18,24 @@ add_executable(hawk-cli
 # Link against libhawk
 target_link_libraries(hawk-cli PRIVATE hawk)
 
-# Include CLI's own src/ directory for local headers
-target_include_directories(hawk-cli PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+# Include CLI source directory for local headers
+target_include_directories(hawk-cli PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
 
-# Set output name to "hawk"
-set_target_properties(hawk-cli PROPERTIES OUTPUT_NAME hawk)
+# Output binary name: hawk
+set_target_properties(hawk-cli PROPERTIES
+    OUTPUT_NAME hawk
+)
 
-# Install target
-install(TARGETS hawk-cli DESTINATION bin)
+# Static linking for MinGW builds
+if(MINGW AND HAWK_STATIC_BUILD)
+    target_link_options(hawk-cli PRIVATE
+        -static
+        -static-libgcc
+        -static-libstdc++
+    )
+endif()
+
+# Install CLI binary
+install(TARGETS hawk-cli RUNTIME DESTINATION bin)

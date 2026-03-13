@@ -1,12 +1,8 @@
 #include <hawk/core/log_file.hpp>
 
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <unistd.h>
-
+#include <fstream>
 #include <stdexcept>
-#include <cstring>
+#include <algorithm>
 
 namespace hawk {
 
@@ -32,17 +28,6 @@ LogFile::LogFile(const std::string& path)
     detect_line_ending();
 }
 
-LogFile::~LogFile()
-{
-    if (mode_ == StorageMode::Mapped && data_) {
-        munmap((void*)data_, file_size_);
-    }
-
-    if (fd_ != -1) {
-        close(fd_);
-    }
-}
-
 LogFile::LogFile(LogFile&& other) noexcept {
     *this = std::move(other);
 }
@@ -58,11 +43,11 @@ LogFile& LogFile::operator=(LogFile&& other) noexcept {
     lines_ = std::move(other.lines_);
     line_offsets_ = std::move(other.line_offsets_);
 
-    fd_ = other.fd_;
+    mapping_ = std::move(other.mapping_);
+
     data_ = other.data_;
     file_size_ = other.file_size_;
 
-    other.fd_ = -1;
     other.data_ = nullptr;
     other.file_size_ = 0;
 
@@ -70,13 +55,11 @@ LogFile& LogFile::operator=(LogFile&& other) noexcept {
 }
 
 std::string_view LogFile::get_line(std::uint64_t idx) const {
-    if (idx >= metadata_.line_count) {
+    if (idx >= metadata_.line_count)
         throw std::out_of_range("LogFile line index out of range");
-    }
 
-    if (mode_ == StorageMode::InMemory) {
+    if (mode_ == StorageMode::InMemory)
         return lines_[idx];
-    }
 
     std::uint64_t start = line_offsets_[idx];
 
@@ -108,18 +91,12 @@ std::vector<std::string> LogFile::sample_lines(std::size_t max_samples) const {
 }
 
 void LogFile::open_file() {
-    fd_ = open(path_.c_str(), O_RDONLY);
-    if (fd_ == -1) {
+    std::ifstream file(path_, std::ios::binary | std::ios::ate);
+
+    if (!file)
         throw std::runtime_error("Failed to open log file");
-    }
 
-    struct stat st {};
-    if (fstat(fd_, &st) != 0) {
-        throw std::runtime_error("Failed to stat log file");
-    }
-
-    file_size_ = static_cast<std::uint64_t>(st.st_size);
-
+    file_size_ = static_cast<std::uint64_t>(file.tellg());
     metadata_.byte_size = file_size_;
 }
 
@@ -131,26 +108,26 @@ void LogFile::detect_storage_mode() {
 }
 
 void LogFile::load_into_memory() {
+    std::ifstream file(path_, std::ios::binary);
+
+    if (!file)
+        throw std::runtime_error("Failed to open log file");
+
     std::string buffer;
     buffer.resize(file_size_);
 
-    ssize_t read_bytes = read(fd_, buffer.data(), file_size_);
-    if (read_bytes < 0) {
-        throw std::runtime_error("Failed reading log file");
-    }
+    file.read(buffer.data(), file_size_);
 
     std::size_t start = 0;
 
     for (std::size_t i = 0; i < buffer.size(); ++i) {
         if (buffer[i] == '\n') {
-
             std::size_t len = i - start;
 
             if (len && buffer[start + len - 1] == '\r')
                 --len;
 
             lines_.emplace_back(buffer.data() + start, len);
-
             start = i + 1;
         }
     }
@@ -164,13 +141,10 @@ void LogFile::load_into_memory() {
 }
 
 void LogFile::map_file() {
-    data_ = static_cast<const char*>(
-        mmap(nullptr, file_size_, PROT_READ, MAP_PRIVATE, fd_, 0));
+    mapping_.open(path_);
 
-    if (data_ == MAP_FAILED) {
-        data_ = nullptr;
-        throw std::runtime_error("mmap failed");
-    }
+    data_ = mapping_.data();
+    file_size_ = mapping_.size();
 }
 
 void LogFile::build_index() {

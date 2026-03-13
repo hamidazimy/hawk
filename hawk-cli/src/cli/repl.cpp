@@ -26,7 +26,8 @@ REPL::REPL(std::unique_ptr<hawk::Session> session)
 }
 
 void REPL::run() {
-    std::cout << constants::WELCOME_MSG << "\n";
+    std::cout << sgr::colorize(std::string(constants::ASCII_LOGO), "#149") << std::endl;
+    std::cout << constants::WELCOME_MSG << std::endl;
 
     while (true) {
         std::cout << constants::PROMPT;

@@ -1,53 +1,87 @@
 cmake_minimum_required(VERSION 3.15)
+
+# -----------------------------------------------------------------------------
+# Project
+# -----------------------------------------------------------------------------
+
 project(hawk VERSION 0.1.0 LANGUAGES CXX)
 
-# Options
-option(HAWK_STATIC_BUILD "Build with static linking" ON)
-option(HAWK_BUILD_API "Build API server" OFF)
+# -----------------------------------------------------------------------------
+# Build options
+# -----------------------------------------------------------------------------
 
+option(HAWK_STATIC_BUILD "Build with static linking" ON)
+
+# -----------------------------------------------------------------------------
 # C++ standard
+# -----------------------------------------------------------------------------
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# -----------------------------------------------------------------------------
+# Version header generation
+# -----------------------------------------------------------------------------
+
+configure_file(
+    ${CMAKE_SOURCE_DIR}/hawk-cli/src/version.hpp.in
+    ${CMAKE_BINARY_DIR}/generated/version.hpp
+    @ONLY
+)
+
+include_directories(${CMAKE_BINARY_DIR}/generated)
+
+# -----------------------------------------------------------------------------
 # Static linking configuration
+# -----------------------------------------------------------------------------
+
 if(HAWK_STATIC_BUILD)
+
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 
     if(UNIX AND NOT APPLE)
-        set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
+        set(CMAKE_EXE_LINKER_FLAGS
+            "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++"
+        )
     endif()
 
     if(WIN32 AND MSVC)
         set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     endif()
+
 endif()
 
+# -----------------------------------------------------------------------------
 # Compiler warnings
-if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    add_compile_options(-Wall -Wextra -Wpedantic)
-    if(CMAKE_BUILD_TYPE MATCHES "Release")
-        add_compile_options(-O3)
-    endif()
-elseif(MSVC)
-    add_compile_options(/W4)
-    if(CMAKE_BUILD_TYPE MATCHES "Release")
-        add_compile_options(/O2)
-    endif()
-endif()
+# -----------------------------------------------------------------------------
 
+add_compile_options(
+    $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall>
+    $<$<CXX_COMPILER_ID:GNU,Clang>:-Wextra>
+    $<$<CXX_COMPILER_ID:GNU,Clang>:-Wpedantic>
+    $<$<CXX_COMPILER_ID:MSVC>:/W4>
+)
+
+# -----------------------------------------------------------------------------
 # Output directories
+# -----------------------------------------------------------------------------
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
-# Build libhawk
-add_subdirectory(libhawk)
+# -----------------------------------------------------------------------------
+# Subprojects
+# -----------------------------------------------------------------------------
 
-# Build hawk-cli
+add_subdirectory(libhawk)
 add_subdirectory(hawk-cli)
 
-# Print configuration
+# -----------------------------------------------------------------------------
+# Build summary
+# -----------------------------------------------------------------------------
+
 message(STATUS "")
 message(STATUS "Hawk Configuration")
 message(STATUS "==================")
