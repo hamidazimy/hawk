@@ -6,6 +6,12 @@
 #include <string>
 #include <string_view>
 
+#ifdef TEST_BUILD
+#define BUILD_TYPE_STR "[Test Build]"
+#else
+#define BUILD_TYPE_STR ""
+#endif
+
 namespace hawk::cli {
 namespace constants {
 
@@ -18,7 +24,7 @@ inline const std::string_view ASCII_LOGO = R"(
 )";
 
 inline const std::string VERSION_STR{
-    "Hawk Log Analyzer v" + std::string(hawk::version::PROJECT)
+    "Hawk Log Analyzer v" + std::string(hawk::version::PROJECT) + " " + BUILD_TYPE_STR
 };
 
 inline const std::string WELCOME_MSG{

@@ -12,6 +12,10 @@ project(hawk VERSION 0.1.0 LANGUAGES CXX)
 
 option(HAWK_STATIC_BUILD "Build with static linking" ON)
 
+if(TEST_BUILD)
+    add_compile_definitions(TEST_BUILD)
+endif()
+
 # -----------------------------------------------------------------------------
 # C++ standard
 # -----------------------------------------------------------------------------
