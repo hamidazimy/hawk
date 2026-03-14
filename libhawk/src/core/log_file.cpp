@@ -110,7 +110,7 @@ void LogFile::detect_storage_mode() {
 }
 
 void LogFile::load_into_memory() {
-    std::ifstream file(path_, std::ios::binary | std::ios::ate);
+   std::ifstream file(path_, std::ios::binary | std::ios::ate);
     if (!file)
         throw std::runtime_error("Failed to open log file");
 
@@ -127,7 +127,15 @@ void LogFile::load_into_memory() {
 
     std::size_t start = 0;
 
-    for (std::size_t i = 0; i < file_buffer_.size(); ++i) {
+    if (file_buffer_.size() >= 3 &&
+        static_cast<unsigned char>(file_buffer_[0]) == 0xEF &&
+        static_cast<unsigned char>(file_buffer_[1]) == 0xBB &&
+        static_cast<unsigned char>(file_buffer_[2]) == 0xBF)
+    {
+        start = 3;
+    }
+
+    for (std::size_t i = start; i < file_buffer_.size(); ++i) {
         if (file_buffer_[i] == '\n') {
             std::size_t len = i - start;
 
@@ -162,12 +170,22 @@ void LogFile::map_file_and_build_index() {
     const char* data = mapping_.data();
     const char* end  = data + file_size_;
 
+    std::size_t start_offset = 0;
+
+    if (file_size_ >= 3 &&
+        static_cast<unsigned char>(data[0]) == 0xEF &&
+        static_cast<unsigned char>(data[1]) == 0xBB &&
+        static_cast<unsigned char>(data[2]) == 0xBF)
+    {
+        start_offset = 3;
+    }
+
     line_offsets_.clear();
     line_offsets_.reserve(file_size_ / 80);
 
-    line_offsets_.push_back(0);
+    line_offsets_.push_back(start_offset);
 
-    const char* p = data;
+    const char* p = data + start_offset;
 
     while (p < end) {
         const void* pos = std::memchr(p, '\n',
