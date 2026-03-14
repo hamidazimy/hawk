@@ -55,17 +55,15 @@ Session::Session(
         );
     }
 
-    auto first_line = source_->sample_lines(1);
+    parser_ = std::make_unique<CSVParser>(config_.delimiter.value());
 
-    size_t column_count = inference::detectors::detect_column_count(
-        first_line,
-        config_.delimiter.value()
-    );
+    auto parsed_first_line = parser_->parse(source_->get_line(0));
+    std::size_t column_count = parsed_first_line.size();
 
     std::vector<std::string> column_names;
 
     if (config_.has_header.value()) {
-        column_names = utils::split(first_line.front(), config_.delimiter.value());
+        column_names = parsed_first_line;
     } else {
         // Generate default column names
         for (size_t i = 0; i < column_count; ++i) {
@@ -97,7 +95,7 @@ Row Session::get_row(std::size_t visible_row_index) const {
 
 Row Session::get_physical_row(std::size_t physical_row_index) const {
     auto line = std::string(source_->get_line(physical_row_index));
-    auto fields = utils::split(line, config_.delimiter.value());
+    auto fields = parser_->parse(line);
     return Row(physical_row_index, fields);
 }
 

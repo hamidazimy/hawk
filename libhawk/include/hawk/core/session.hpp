@@ -2,6 +2,7 @@
 #define HAWK_SESSION_HPP
 
 #include <hawk/core/log_file.hpp>
+#include <hawk/core/parsers.hpp>
 #include <hawk/core/schema.hpp>
 #include <hawk/core/row.hpp>
 #include <hawk/core/view.hpp>
@@ -64,6 +65,7 @@ private:
     const SessionConfig config_;
     Schema schema_;
     View current_view_;
+    std::unique_ptr<Parser> parser_;
 };
 
 } // namespace hawk

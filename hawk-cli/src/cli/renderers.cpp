@@ -14,36 +14,53 @@ namespace renderers {
 
 namespace {
 
+void render_hline(char ch,
+                  const std::vector<std::size_t>& column_widths,
+                  std::ostream& sout)
+{
+    for (std::size_t i = 0; i < column_widths.size(); ++i)
+        sout << std::setw(column_widths[i]) << std::setfill(ch) << "" << " ";
+    sout << "\n" << std::setfill(' ');
+}
+
+void render_header(const std::vector<std::string>& column_names,
+                   const std::vector<std::size_t>& column_widths,
+                   std::ostream& sout)
+{
+    render_hline('-', column_widths, sout);
+    for (std::size_t i = 0; i < column_widths.size(); ++i)
+        sout << std::setw(column_widths[i]) << std::left << column_names[i] << " ";
+    sout << "\n";
+    render_hline('-', column_widths, sout);
+}
+
+void render_row(const hawk::Row& row,
+                const std::vector<std::size_t>& column_widths,
+                std::ostream& sout)
+{
+    for (std::size_t i = 0; i < row.fields().size(); ++i) {
+        sout << std::setw(column_widths[i]) << std::left << (row[i].length() > column_widths[i] ? std::string(row[i].substr(0, column_widths[i] - 3)) + "..." : row[i]) << " ";
+    }
+    sout << "\n";
+}
+
 void render_impl(const hawk::RowsResult& res,
                  const hawk::Schema& schema,
                  std::ostream& sout)
 {
-        std::vector<int> column_widths(schema.column_count(), 0);
-    for (std::size_t i = 0; i < schema.column_count(); ++i) {
-        column_widths[i] = std::max(column_widths[i], static_cast<int>(schema.column_names()[i].size()));
+    std::size_t MAX_COL_WIDTH = 20;
+    std::vector<std::size_t> column_widths(schema.column_count(), 0);
+    for (std::size_t i = 0; i < column_widths.size(); ++i) {
+        column_widths[i] = std::max(column_widths[i], schema.column_names()[i].size());
     }
     for (const auto& row : res.rows) {
         for (std::size_t i = 0; i < row.fields().size(); ++i) {
-            column_widths[i] = std::max(column_widths[i], static_cast<int>(row[i].size()));
+            column_widths[i] = std::min(MAX_COL_WIDTH, std::max(column_widths[i], row[i].size()));
         }
     }
-    for (std::size_t i = 0; i < schema.column_count(); ++i) {
-        sout << std::setw(column_widths[i]) << std::setfill('-') << "" << " ";
-    }
-    sout << "\n" << std::setfill(' ');
-    for (std::size_t i = 0; i < schema.column_count(); ++i) {
-        sout << std::setw(column_widths[i]) << std::left << schema.column_names()[i] << " ";
-    }
-    sout << "\n";
-    for (std::size_t i = 0; i < schema.column_count(); ++i) {
-        sout << std::setw(column_widths[i]) << std::setfill('-') << "" << " ";
-    }
-    sout << "\n" << std::setfill(' ');
+    render_header(schema.column_names(), column_widths, sout);
     for (const auto& row : res.rows) {
-        for (std::size_t i = 0; i < row.fields().size(); ++i) {
-            sout << std::setw(column_widths[i]) << std::left << row[i] << " ";
-        }
-        sout << "\n";
+        render_row(row, column_widths, sout);
     }
 }
 
