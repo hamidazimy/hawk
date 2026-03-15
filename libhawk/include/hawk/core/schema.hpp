@@ -1,5 +1,5 @@
-#ifndef HAWK_CORE_SCHEMA_HPP
-#define HAWK_CORE_SCHEMA_HPP
+#ifndef HAWK_SCHEMA_HPP
+#define HAWK_SCHEMA_HPP
 
 #include <optional>
 #include <string>
@@ -29,4 +29,4 @@ private:
 
 } // namespace hawk
 
-#endif // HAWK_CORE_SCHEMA_HPP
+#endif // HAWK_SCHEMA_HPP
