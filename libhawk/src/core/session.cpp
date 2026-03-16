@@ -1,12 +1,24 @@
 #include <hawk/core/session.hpp>
 
+#include <hawk/core/types.hpp>
+#include <hawk/core/record_source.hpp>
+#include <hawk/core/record_parser.hpp>
+#include <hawk/core/schema.hpp>
+#include <hawk/core/row.hpp>
+#include <hawk/core/view.hpp>
+#include <hawk/core/filter.hpp>
+#include <hawk/core/commands.hpp>
 #include <hawk/core/results.hpp>
 #include <hawk/utils/format_inference.hpp>
-#include <hawk/utils/utils.hpp>
 
-#include <stdexcept>
-#include <variant>
+#include <algorithm>
+#include <cstdlib>
+#include <functional>
 #include <numeric>
+#include <stdexcept>
+#include <utility>
+#include <variant>
+#include <vector>
 
 namespace hawk {
 
@@ -35,19 +47,19 @@ void SessionConfig::resolve_with_inference(const inference::FormatInferenceResul
 // ---- Session ----
 
 std::unique_ptr<Session> Session::create_from_file(const std::string& filepath, const SessionConfig& config) {
-    auto source = std::make_unique<LogFile>(filepath);
+    auto source = std::make_unique<CSVRecordSource>(filepath);
     auto session = std::unique_ptr<Session>(
-        new Session(std::move(source), config)
+        new Session(config, std::move(source))
     );
     return session;
 }
 
 Session::Session(
-    std::unique_ptr<LogFile> source,
-    const SessionConfig& config
+    const SessionConfig& config,
+    std::unique_ptr<RecordSource> source
 )
-    : source_(std::move(source))
-    , config_(config)
+    : config_(config)
+    , source_(std::move(source))
 {
     if (!config_.complete()) {
         throw std::logic_error(
@@ -55,15 +67,15 @@ Session::Session(
         );
     }
 
-    parser_ = std::make_unique<CSVParser>(config_.delimiter.value());
+    parser_ = std::make_unique<CSVRecordParser>(config_.delimiter.value());
 
-    auto parsed_first_line = parser_->parse(source_->get_line(0));
-    std::size_t column_count = parsed_first_line.size();
+    auto parsed_first_record = parser_->parse_record(source_->get_record(0));
+    std::size_t column_count = parsed_first_record.size();
 
     std::vector<std::string> column_names;
 
     if (config_.has_header.value()) {
-        column_names = parsed_first_line;
+        column_names = parsed_first_record;
     } else {
         // Generate default column names
         for (size_t i = 0; i < column_count; ++i) {
@@ -78,25 +90,25 @@ Session::Session(
 }
 
 View Session::make_base_view() const {
-    std::size_t header_size = config_.has_header.value() ? 1 : 0;
-    std::vector<std::size_t> indices(source_->row_count() - header_size);
+    RecordCount header_size = config_.has_header.value() ? 1 : 0;
+    std::vector<RecordIndex> indices(source_->record_count() - header_size);
     std::iota(indices.begin(), indices.end(), header_size);
     return View(std::move(indices));
 }
 
-std::size_t Session::visible_row_count() const noexcept {
+RecordCount Session::visible_row_count() const noexcept {
     return current_view_.size();
 }
 
-Row Session::get_row(std::size_t visible_row_index) const {
-    auto physical_row_index = current_view_.map_to_physical_index(visible_row_index);
-    return get_physical_row(physical_row_index);
+Row Session::get_row(RecordIndex visible_index) const {
+    auto physical_index = current_view_.map_to_physical_index(visible_index);
+    return get_physical_row(physical_index);
 }
 
-Row Session::get_physical_row(std::size_t physical_row_index) const {
-    auto line = std::string(source_->get_line(physical_row_index));
-    auto fields = parser_->parse(line);
-    return Row(physical_row_index, fields);
+Row Session::get_physical_row(RecordIndex physical_index) const {
+    auto record = std::string(source_->get_record(physical_index));
+    auto fields = parser_->parse_record(record);
+    return Row(physical_index, fields);
 }
 
 CommandResult Session::execute(const LibCommand& command) {
@@ -109,13 +121,13 @@ CommandResult Session::execute(const LibCommand& command) {
 }
 
 CommandResult Session::execute_impl(const HeadCommand& cmd) {
-    std::size_t max_rows = this->visible_row_count();
-    std::size_t count = std::min(cmd.count, max_rows);
+    RecordCount max_visible_records = this->visible_row_count();
+    RecordCount count = std::min(cmd.max_records, max_visible_records);
 
     std::vector<Row> rows;
     rows.reserve(count);
 
-    for (std::size_t i = 0; i < count; ++i) {
+    for (RecordIndex i = 0; i < count; ++i) {
         rows.push_back(this->get_row(i));
     }
 
@@ -130,7 +142,7 @@ CommandResult Session::execute_impl(const FilterCommand& cmd) {
     }
 
     current_view_ = current_view_.filter(
-        [&](std::size_t row_index) {
+        [&](RecordIndex row_index) {
             Row row = get_physical_row(row_index);
             return evaluate(std::string{row[*column_index]}, cmd.op, cmd.value);
         }
@@ -157,22 +169,22 @@ bool Session::evaluate(const std::string& lhs,
 
     if (lhs_is_num && rhs_is_num) {
         switch (op) {
-            case FilterOp::EQ:  return lhs_num == rhs_num;
-            case FilterOp::NEQ: return lhs_num != rhs_num;
-            case FilterOp::GT:  return lhs_num >  rhs_num;
-            case FilterOp::LT:  return lhs_num <  rhs_num;
-            case FilterOp::GTE: return lhs_num >= rhs_num;
-            case FilterOp::LTE: return lhs_num <= rhs_num;
+            case FilterOp::EQ: return lhs_num == rhs_num;
+            case FilterOp::NE: return lhs_num != rhs_num;
+            case FilterOp::GT: return lhs_num >  rhs_num;
+            case FilterOp::LT: return lhs_num <  rhs_num;
+            case FilterOp::GE: return lhs_num >= rhs_num;
+            case FilterOp::LE: return lhs_num <= rhs_num;
         }
     }
 
     switch (op) {
-        case FilterOp::EQ:  return lhs == rhs;
-        case FilterOp::NEQ: return lhs != rhs;
-        case FilterOp::GT:  return lhs >  rhs;
-        case FilterOp::LT:  return lhs <  rhs;
-        case FilterOp::GTE: return lhs >= rhs;
-        case FilterOp::LTE: return lhs <= rhs;
+        case FilterOp::EQ: return lhs == rhs;
+        case FilterOp::NE: return lhs != rhs;
+        case FilterOp::GT: return lhs >  rhs;
+        case FilterOp::LT: return lhs <  rhs;
+        case FilterOp::GE: return lhs >= rhs;
+        case FilterOp::LE: return lhs <= rhs;
     }
 
     return false;

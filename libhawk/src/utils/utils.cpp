@@ -1,12 +1,15 @@
 #include <algorithm>
 #include <cctype>
-#include <sstream>
+#include <cstddef>
 #include <iomanip>
+#include <sstream>
+#include <string>
+#include <string_view>
 #include <vector>
 
 namespace hawk::utils {
 
-std::string human_size(size_t bytes) {
+std::string human_size(std::size_t bytes) {
     const char* units[] = {"B", "KB", "MB", "GB", "TB"};
     int unit_index = 0;
     double size = static_cast<double>(bytes);
@@ -44,8 +47,8 @@ std::vector<std::string> split(const std::string& str, char delimiter) {
 
 std::vector<std::string_view> split_view(std::string_view str, char delimiter) {
     std::vector<std::string_view> tokens;
-    size_t start = 0;
-    size_t end = str.find(delimiter);
+    std::size_t start = 0;
+    std::size_t end = str.find(delimiter);
 
     while (end != std::string_view::npos) {
         tokens.push_back(str.substr(start, end - start));

@@ -1,19 +1,21 @@
 #ifndef HAWK_SESSION_HPP
 #define HAWK_SESSION_HPP
 
-#include <hawk/core/log_file.hpp>
-#include <hawk/core/parsers.hpp>
+#include <hawk/core/types.hpp>
+#include <hawk/core/record_source.hpp>
+#include <hawk/core/record_parser.hpp>
 #include <hawk/core/schema.hpp>
-#include <hawk/core/row.hpp>
 #include <hawk/core/view.hpp>
 #include <hawk/core/commands.hpp>
 #include <hawk/core/results.hpp>
 
-#include <hawk/utils/format_inference.hpp>
-
 #include <memory>
+#include <optional>
 #include <string>
-#include <variant>
+
+namespace hawk { class Row; }
+namespace hawk { enum class FilterOp; }
+namespace hawk { namespace inference { struct FormatInferenceResult; } }
 
 namespace hawk {
 
@@ -34,21 +36,21 @@ public:
         const SessionConfig& config
     );
 
-    const LogFile& source() const noexcept { return *source_; }
     const SessionConfig& config() const noexcept { return config_; }
+    const RecordSource& source() const noexcept { return *source_; }
     const Schema& schema() const noexcept { return schema_; }
     const View& view() const noexcept { return current_view_; }
 
-    std::size_t visible_row_count() const noexcept;
-    Row get_row(std::size_t visible_row_index) const;
-    Row get_physical_row(std::size_t physical_row_index) const;
+    RecordCount visible_row_count() const noexcept;
+    Row get_row(RecordIndex visible_index) const;
+    Row get_physical_row(RecordIndex physical_index) const;
 
     CommandResult execute(const LibCommand& command);
 
 private:
     Session(
-        std::unique_ptr<LogFile> source,
-        const SessionConfig& config
+        const SessionConfig& config,
+        std::unique_ptr<RecordSource> source
     );
 
     CommandResult execute_impl(const HeadCommand&);
@@ -61,11 +63,11 @@ private:
     View make_base_view() const;
 
 private:
-    std::unique_ptr<LogFile> source_;
     const SessionConfig config_;
+    std::unique_ptr<RecordSource> source_;
+    std::unique_ptr<RecordParser> parser_;
     Schema schema_;
     View current_view_;
-    std::unique_ptr<Parser> parser_;
 };
 
 } // namespace hawk

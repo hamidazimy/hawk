@@ -1,9 +1,11 @@
 #ifndef HAWK_FORMAT_INFERER_HPP
 #define HAWK_FORMAT_INFERER_HPP
 
-#include <hawk/core/log_file.hpp>
-
 #include <cstddef>
+#include <string>
+#include <vector>
+
+namespace hawk { class RecordSource; }
 
 namespace hawk::inference {
 
@@ -39,11 +41,13 @@ public:
         std::size_t max_sample_lines = 100;
     };
 
-    explicit FormatInferer();
+    explicit FormatInferer()
+        : options_() {}
 
-    explicit FormatInferer(Options options);
+    explicit FormatInferer(Options options)
+        : options_(options) {}
 
-    FormatInferenceResult infer(const LogFile& source) const;
+    FormatInferenceResult infer(const RecordSource& source) const;
 
     FormatInferenceResult infer_from_file(const std::string& path) const;
 

@@ -2,13 +2,18 @@
 #define HAWK_COMMANDS_HPP
 
 #include <hawk/core/types.hpp>
+
+#include <string>
+#include <utility>
 #include <variant>
+
+namespace hawk { enum class FilterOp; }
 
 namespace hawk {
 
 struct HeadCommand {
-    std::size_t count;
-    explicit HeadCommand(std::size_t c) : count(c) {}
+    RecordCount max_records;
+    explicit HeadCommand(RecordCount count) : max_records(count) {}
 };
 
 struct FilterCommand {

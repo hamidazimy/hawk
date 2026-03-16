@@ -1,24 +1,26 @@
 #include <hawk/core/view.hpp>
 
+#include <hawk/core/types.hpp>
+
 #include <stdexcept>
 
 namespace hawk {
 
-std::size_t View::map_to_physical_index(std::size_t visible_row_index) const {
-    if (visible_row_index >= indices_.size()) {
+RecordIndex View::map_to_physical_index(RecordIndex visible_index) const {
+    if (visible_index >= indices_.size()) {
         throw std::out_of_range("View row index out of range");
     }
 
-    return indices_[visible_row_index];
+    return indices_[visible_index];
 }
 
-View View::filter(std::function<bool(std::size_t)> predicate) const {
-    std::vector<std::size_t> result;
+View View::filter(std::function<bool(RecordIndex)> predicate) const {
+    std::vector<RecordIndex> result;
     result.reserve(indices_.size());
 
-    for (std::size_t source_row : indices_) {
-        if (predicate(source_row)) {
-            result.push_back(source_row);
+    for (RecordIndex source_row_index : indices_) {
+        if (predicate(source_row_index)) {
+            result.push_back(source_row_index);
         }
     }
 

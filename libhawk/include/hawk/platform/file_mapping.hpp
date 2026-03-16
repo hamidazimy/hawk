@@ -1,7 +1,8 @@
 #ifndef HAWK_PLATFORM_FILE_MAPPING_HPP
 #define HAWK_PLATFORM_FILE_MAPPING_HPP
 
-#include <cstdint>
+#include <hawk/core/types.hpp>
+
 #include <string>
 
 namespace hawk::platform {
@@ -20,11 +21,11 @@ public:
     void open(const std::string& path);
 
     const char* data() const { return data_; }
-    std::uint64_t size() const { return size_; }
+    FileOffset size() const { return size_; }
 
 private:
     const char* data_ = nullptr;
-    std::uint64_t size_ = 0;
+    FileOffset size_ = 0;
 
 #ifdef _WIN32
     void* file_ = nullptr;

@@ -1,16 +1,17 @@
 #ifndef HAWK_UTILS_HPP
 #define HAWK_UTILS_HPP
 
+#include <cstddef>
 #include <string>
-#include <vector>
 #include <string_view>
+#include <vector>
 
 namespace hawk::utils {
 
 /**
  * Convert byte size to human-readable format (e.g., "2.5 MB")
  */
-std::string human_size(size_t bytes);
+std::string human_size(std::size_t bytes);
 
 /**
  * Trim whitespace from both ends of a string

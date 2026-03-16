@@ -1,11 +1,12 @@
 #ifndef HAWK_RESULTS_HPP
 #define HAWK_RESULTS_HPP
 
+#include <hawk/core/types.hpp>
 #include <hawk/core/row.hpp>
 
-#include <vector>
 #include <string>
 #include <variant>
+#include <vector>
 
 namespace hawk {
 
@@ -14,7 +15,7 @@ struct RowsResult {
 };
 
 struct CountResult {
-    std::size_t count;
+    RecordCount count;
 };
 
 struct SuccessResult {

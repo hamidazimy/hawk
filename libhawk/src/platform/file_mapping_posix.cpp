@@ -6,8 +6,9 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
-
+#include <cstddef>
 #include <stdexcept>
+#include <string>
 
 namespace hawk::platform {
 
@@ -20,7 +21,7 @@ void FileMapping::open(const std::string& path) {
     if (fstat(fd_, &st) != 0)
         throw std::runtime_error("Failed to stat file");
 
-    size_ = st.st_size;
+    size_ = static_cast<std::size_t>(st.st_size);
 
     data_ = static_cast<const char*>(
         mmap(nullptr, size_, PROT_READ, MAP_PRIVATE, fd_, 0));

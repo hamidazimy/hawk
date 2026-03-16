@@ -1,21 +1,21 @@
-#include <hawk/core/parsers.hpp>
+#include <hawk/core/record_parser.hpp>
+
+#include <hawk/core/types.hpp>
 
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace hawk {
 
-CSVParser::CSVParser(char delimiter)
-    : delimiter_(delimiter) {}
-
-std::vector<std::string> CSVParser::parse(std::string_view line) const {
+std::vector<std::string> CSVRecordParser::parse_record(std::string_view line) const {
     std::vector<std::string> fields;
     std::string current;
 
     bool in_quotes = false;
 
-    for (std::size_t i = 0; i < line.size(); ++i) {
+    for (FileOffset i = 0; i < line.size(); ++i) {
         char c = line[i];
 
         if (c == '"') {

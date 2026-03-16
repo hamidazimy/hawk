@@ -1,5 +1,7 @@
 #include <hawk/core/schema.hpp>
 
+#include <cstddef>
+#include <exception>
 #include <optional>
 #include <string>
 

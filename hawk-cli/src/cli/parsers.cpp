@@ -28,15 +28,15 @@ FilterCommand filter(std::string_view args) {
     if (parts[1] == "==") {
         op = hawk::FilterOp::EQ;
     } else if (parts[1] == "!=") {
-        op = hawk::FilterOp::NEQ;
+        op = hawk::FilterOp::NE;
     } else if (parts[1] == ">") {
         op = hawk::FilterOp::GT;
     } else if (parts[1] == "<") {
         op = hawk::FilterOp::LT;
     } else if (parts[1] == ">=") {
-        op = hawk::FilterOp::GTE;
+        op = hawk::FilterOp::GE;
     } else if (parts[1] == "<=") {
-        op = hawk::FilterOp::LTE;
+        op = hawk::FilterOp::LE;
     } else {
         throw std::invalid_argument("Invalid operator in filter command: " + parts[1]);
     }

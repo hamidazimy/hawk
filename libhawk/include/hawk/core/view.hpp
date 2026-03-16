@@ -1,26 +1,30 @@
 #ifndef HAWK_VIEW_HPP
 #define HAWK_VIEW_HPP
 
+#include <hawk/core/types.hpp>
+
 #include <functional>
+#include <utility>
+#include <vector>
 
 namespace hawk {
 
 class View {
 public:
     View() = default;
-    explicit View(std::vector<std::size_t> indices)
+    explicit View(std::vector<RecordIndex> indices)
         : indices_(std::move(indices)) {}
 
-    std::size_t size() const noexcept { return indices_.size(); }
+    RecordCount size() const noexcept { return indices_.size(); }
 
-    const std::vector<std::size_t>& indices() const { return indices_; }
+    const std::vector<RecordIndex>& indices() const { return indices_; }
 
-    std::size_t map_to_physical_index(std::size_t visible_row_index) const;
+    RecordIndex map_to_physical_index(RecordIndex visible_index) const;
 
-    View filter(std::function<bool(std::size_t source_row)> predicate) const;
+    View filter(std::function<bool(RecordIndex source_row)> predicate) const;
 
 private:
-    std::vector<std::size_t> indices_;
+    std::vector<RecordIndex> indices_;
 };
 
 } // namespace hawk

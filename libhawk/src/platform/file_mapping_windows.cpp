@@ -4,6 +4,7 @@
 
 #include <windows.h>
 
+#include <cstddef>
 #include <stdexcept>
 
 namespace hawk::platform {
@@ -25,7 +26,7 @@ void FileMapping::open(const std::string& path) {
     if (!GetFileSizeEx(file_, &size))
         throw std::runtime_error("GetFileSizeEx failed");
 
-    size_ = static_cast<std::uint64_t>(size.QuadPart);
+    size_ = static_cast<std::size_t>(size.QuadPart);
 
     mapping_ = CreateFileMappingA(
         file_,

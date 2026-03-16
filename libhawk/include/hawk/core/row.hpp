@@ -1,24 +1,28 @@
 #ifndef HAWK_ROW_HPP
 #define HAWK_ROW_HPP
 
+#include <hawk/core/types.hpp>
+
 #include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 namespace hawk {
 
 class Row {
 public:
-    Row(std::size_t index, std::vector<std::string> fields)
+    Row(RecordIndex index, std::vector<std::string> fields)
         : index_(index), fields_(std::move(fields)) {}
 
-    std::size_t index() const { return index_; }
+    RecordIndex index() const { return index_; }
 
     const std::vector<std::string>& fields() const { return fields_; }
 
-    std::string_view operator[](std::size_t idx) const;
+    std::string_view operator[](RecordIndex idx) const;
 
 private:
-    std::size_t index_;
+    RecordIndex index_;
     std::vector<std::string> fields_;
 };
 

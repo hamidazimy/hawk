@@ -15,7 +15,8 @@ endif()
 add_library(hawk STATIC
     src/core/session.cpp
     src/core/log_file.cpp
-    src/core/parsers.cpp
+    src/core/record_source.cpp
+    src/core/record_parser.cpp
     src/core/schema.cpp
     src/core/row.cpp
     src/core/view.cpp

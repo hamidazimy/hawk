@@ -1,23 +1,18 @@
 #ifndef HAWK_TYPES_HPP
 #define HAWK_TYPES_HPP
 
+#include <cstddef>
+#include <cstdint>
+
 namespace hawk {
 
-enum class LineEnding {
-    LF,
-    CRLF,
-    MIXED,
-    UNKNOWN
-};
+using FileOffset = std::size_t;
 
-enum class FilterOp {
-    EQ,  // ==
-    NEQ, // !=
-    GT,  // >
-    LT,  // <
-    GTE, // >=
-    LTE  // <=
-};
+using RecordCount = std::uint64_t;
+
+using RecordIndex = std::uint64_t;
+
+constexpr RecordIndex INVALID_RECORD_INDEX = static_cast<RecordIndex>(-1);
 
 } // namespace hawk
 

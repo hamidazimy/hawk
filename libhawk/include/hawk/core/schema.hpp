@@ -1,6 +1,7 @@
 #ifndef HAWK_SCHEMA_HPP
 #define HAWK_SCHEMA_HPP
 
+#include <cstddef>
 #include <optional>
 #include <string>
 #include <vector>

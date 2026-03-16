@@ -1,11 +1,10 @@
 #include <hawk/utils/format_inference.hpp>
 
 #include <hawk/utils/utils.hpp>
-#include <hawk/core/log_file.hpp>
+#include <hawk/core/record_source.hpp>
 
 #include <algorithm>
 #include <cctype>
-#include <map>
 #include <memory>
 #include <numeric>
 
@@ -77,17 +76,13 @@ std::size_t detect_column_count(const std::vector<std::string>& sample_lines, ch
 
 } // namespace detectors
 
-
-FormatInferer::FormatInferer()
-    : options_() {}
-
-FormatInferer::FormatInferer(Options options)
-    : options_(options) {}
-
-FormatInferenceResult FormatInferer::infer(const LogFile& source) const {
+FormatInferenceResult FormatInferer::infer(const RecordSource& source) const {
     FormatInferenceResult result;
 
-    auto samples = source.sample_lines(options_.max_sample_lines);
+    // Disable format_inference for now.
+    // TODO: Refactor.
+    // source.sample_lines(options_.max_sample_lines);
+    std::vector<std::string> samples = {};
     result.sampled_rows = samples.size();
 
     if (samples.empty()) {
@@ -112,15 +107,11 @@ FormatInferenceResult FormatInferer::infer(const LogFile& source) const {
             : "First row looks like data"
     );
 
-    // Metadata-based hints
-    const auto& meta = source.metadata();
-    result.total_rows_estimate = meta.line_count;
-
     return result;
 }
 
 FormatInferenceResult FormatInferer::infer_from_file(const std::string& path) const {
-    auto source = std::make_unique<LogFile>(path);
+    auto source = std::make_unique<CSVRecordSource>(path);
     return infer(*source);
 }
 
