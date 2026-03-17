@@ -86,29 +86,22 @@ Session::Session(
     schema_ = Schema(column_count);
     schema_.set_column_names(column_names);
 
-    current_view_ = make_base_view();
-}
-
-View Session::make_base_view() const {
-    RecordCount header_size = config_.has_header.value() ? 1 : 0;
-    std::vector<RecordIndex> indices(source_->record_count() - header_size);
-    std::iota(indices.begin(), indices.end(), header_size);
-    return View(std::move(indices));
+    current_view_ = View::identity(source_->record_count(), config_.has_header.value() ? 1 : 0);
 }
 
 RecordCount Session::visible_row_count() const noexcept {
     return current_view_.size();
 }
 
-Row Session::get_row(RecordIndex visible_index) const {
-    auto physical_index = current_view_.map_to_physical_index(visible_index);
-    return get_physical_row(physical_index);
+Row Session::get_view_record(RecordIndex view_index) const {
+    auto file_index = current_view_.at(view_index);
+    return get_file_record(file_index);
 }
 
-Row Session::get_physical_row(RecordIndex physical_index) const {
-    auto record = std::string(source_->get_record(physical_index));
+Row Session::get_file_record(RecordIndex file_index) const {
+    auto record = std::string(source_->get_record(file_index));
     auto fields = parser_->parse_record(record);
-    return Row(physical_index, fields);
+    return Row(file_index, fields);
 }
 
 CommandResult Session::execute(const LibCommand& command) {
@@ -128,7 +121,7 @@ CommandResult Session::execute_impl(const HeadCommand& cmd) {
     rows.reserve(count);
 
     for (RecordIndex i = 0; i < count; ++i) {
-        rows.push_back(this->get_row(i));
+        rows.push_back(this->get_view_record(i));
     }
 
     return RowsResult{std::move(rows)};
@@ -141,10 +134,13 @@ CommandResult Session::execute_impl(const FilterCommand& cmd) {
         return ErrorResult{"Unknown column: " + cmd.column};
     }
 
+    const auto col_idx = *column_index;
+
     current_view_ = current_view_.filter(
         [&](RecordIndex row_index) {
-            Row row = get_physical_row(row_index);
-            return evaluate(std::string{row[*column_index]}, cmd.op, cmd.value);
+            const auto& record = source_->get_record(row_index);
+            auto fields = parser_->parse_record(record);
+            return evaluate(fields[col_idx], cmd.op, cmd.value);
         }
     );
 

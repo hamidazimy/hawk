@@ -42,8 +42,8 @@ public:
     const View& view() const noexcept { return current_view_; }
 
     RecordCount visible_row_count() const noexcept;
-    Row get_row(RecordIndex visible_index) const;
-    Row get_physical_row(RecordIndex physical_index) const;
+    Row get_view_record(RecordIndex view_index) const;
+    Row get_file_record(RecordIndex file_index) const;
 
     CommandResult execute(const LibCommand& command);
 
@@ -58,9 +58,6 @@ private:
     // Add new overloads here when commands are introduced.
 
     bool evaluate(const std::string& lhs, FilterOp op, const std::string& rhs) const;
-
-    // ----- Internal Helpers -----
-    View make_base_view() const;
 
 private:
     const SessionConfig config_;

@@ -3,7 +3,8 @@
 
 #include <hawk/core/types.hpp>
 
-#include <functional>
+#include <cstddef>
+#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -11,20 +12,80 @@ namespace hawk {
 
 class View {
 public:
-    View() = default;
-    explicit View(std::vector<RecordIndex> indices)
-        : indices_(std::move(indices)) {}
+    View()
+        : total_records_(0)
+        , start_index_(0)
+        , is_identity_(true)
+    {}
 
-    RecordCount size() const noexcept { return indices_.size(); }
+    View(
+        RecordCount total_records,
+        RecordIndex start_index
+    )
+        : total_records_(total_records)
+        , start_index_(start_index)
+        , is_identity_(true)
+    {}
 
-    const std::vector<RecordIndex>& indices() const { return indices_; }
+    View(
+        std::vector<RecordIndex> indices,
+        RecordCount total_records,
+        RecordIndex start_index
+    )
+        : indices_(std::move(indices))
+        , total_records_(total_records)
+        , start_index_(start_index)
+        , is_identity_(false)
+    {}
 
-    RecordIndex map_to_physical_index(RecordIndex visible_index) const;
+    static View identity(RecordCount total_records, RecordIndex start_index) {
+        return View(total_records, start_index);
+    }
 
-    View filter(std::function<bool(RecordIndex source_row)> predicate) const;
+    RecordCount size() const noexcept {
+        if (is_identity_) {
+            return (start_index_ <= total_records_)
+                ? (total_records_ - start_index_)
+                : 0;
+        }
+        return indices_.size();
+    }
+
+    RecordIndex operator[](std::size_t i) const noexcept {
+        return is_identity_ ? start_index_ + i : indices_[i];
+    }
+
+    RecordIndex at(std::size_t i) const {
+        if (i >= size()) {
+            throw std::out_of_range("View index out of range");
+        }
+        return (*this)[i];
+    }
+
+    template <typename Func> void for_each(Func&& func) const {
+        for (RecordIndex i = 0; i < size(); ++i) {
+            func((*this)[i]);
+        }
+    }
+
+    template <typename Predicate> View filter(Predicate&& predicate) const {
+        std::vector<RecordIndex> result;
+        result.reserve(size());
+
+        for_each([&](RecordIndex physical) {
+            if (predicate(physical)) {
+                result.push_back(physical);
+            }
+        });
+
+        return View(std::move(result), total_records_, start_index_);
+    }
 
 private:
     std::vector<RecordIndex> indices_;
+    RecordCount total_records_ = 0;
+    RecordIndex start_index_ = 0;
+    bool is_identity_ = true;
 };
 
 } // namespace hawk
