@@ -12,6 +12,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 
 namespace hawk { class Row; }
 namespace hawk { enum class FilterOp; }
@@ -57,7 +58,7 @@ private:
     CommandResult execute_impl(const FilterCommand&);
     // Add new overloads here when commands are introduced.
 
-    bool evaluate(const std::string& lhs, FilterOp op, const std::string& rhs) const;
+    bool evaluate(const std::string_view& lhs, FilterOp op, const std::string& rhs) const;
 
 private:
     const SessionConfig config_;

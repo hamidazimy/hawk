@@ -13,8 +13,6 @@
 
 #include <algorithm>
 #include <cstdlib>
-#include <functional>
-#include <numeric>
 #include <stdexcept>
 #include <utility>
 #include <variant>
@@ -75,10 +73,12 @@ Session::Session(
     std::vector<std::string> column_names;
 
     if (config_.has_header.value()) {
-        column_names = parsed_first_record;
+        for (std::size_t i = 0; i < column_count; ++i) {
+            column_names.push_back(std::string(parsed_first_record.at(i)));
+        }
     } else {
         // Generate default column names
-        for (size_t i = 0; i < column_count; ++i) {
+        for (std::size_t i = 0; i < column_count; ++i) {
             column_names.push_back("$col" + std::to_string(i + 1));
         }
     }
@@ -99,9 +99,9 @@ Row Session::get_view_record(RecordIndex view_index) const {
 }
 
 Row Session::get_file_record(RecordIndex file_index) const {
-    auto record = std::string(source_->get_record(file_index));
+    auto record = source_->get_record(file_index);
     auto fields = parser_->parse_record(record);
-    return Row(file_index, fields);
+    return Row(file_index, record, fields);
 }
 
 CommandResult Session::execute(const LibCommand& command) {
@@ -147,7 +147,7 @@ CommandResult Session::execute_impl(const FilterCommand& cmd) {
     return CountResult{current_view_.size()};
 }
 
-bool Session::evaluate(const std::string& lhs,
+bool Session::evaluate(const std::string_view& lhs,
                        FilterOp op,
                        const std::string& rhs) const
 {
@@ -160,7 +160,7 @@ bool Session::evaluate(const std::string& lhs,
     double lhs_num;
     double rhs_num;
 
-    bool lhs_is_num = try_parse_double(lhs, lhs_num);
+    bool lhs_is_num = try_parse_double(std::string(lhs), lhs_num);
     bool rhs_is_num = try_parse_double(rhs, rhs_num);
 
     if (lhs_is_num && rhs_is_num) {

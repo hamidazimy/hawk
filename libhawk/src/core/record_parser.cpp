@@ -2,40 +2,38 @@
 
 #include <hawk/core/types.hpp>
 
-#include <string>
+#include <cstddef>
 #include <string_view>
-#include <utility>
 #include <vector>
 
 namespace hawk {
 
-std::vector<std::string> CSVRecordParser::parse_record(std::string_view line) const {
-    std::vector<std::string> fields;
-    std::string current;
+std::vector<std::string_view> CSVRecordParser::parse_record(std::string_view line) const {
+    std::vector<std::string_view> fields;
+    fields.reserve(16); // optional heuristic
 
     bool in_quotes = false;
+    std::size_t field_start = 0;
 
     for (FileOffset i = 0; i < line.size(); ++i) {
         char c = line[i];
 
         if (c == '"') {
             if (in_quotes && i + 1 < line.size() && line[i + 1] == '"') {
-                current += '"';
+                // Escaped quote: skip next quote
                 ++i;
             } else {
                 in_quotes = !in_quotes;
             }
         }
         else if (c == delimiter_ && !in_quotes) {
-            fields.push_back(std::move(current));
-            current.clear();
-        }
-        else {
-            current += c;
+            fields.emplace_back(line.data() + field_start, i - field_start);
+            field_start = i + 1;
         }
     }
 
-    fields.push_back(std::move(current));
+    // Last field
+    fields.emplace_back(line.data() + field_start, line.size() - field_start);
 
     return fields;
 }

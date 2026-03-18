@@ -38,8 +38,21 @@ void render_row(const hawk::Row& row,
                 const std::vector<std::size_t>& column_widths,
                 std::ostream& sout)
 {
-    for (std::size_t i = 0; i < row.fields().size(); ++i) {
-        sout << std::setw(column_widths[i]) << std::left << (row[i].length() > column_widths[i] ? std::string(row[i].substr(0, column_widths[i] - 3)) + "..." : row[i]) << " ";
+    for (std::size_t i = 0; i < row.length(); ++i) {
+        auto field = row.at(i);
+        const auto width = column_widths[i];
+
+        std::string trimmed;
+
+        if (field.size() > width) {
+            trimmed.reserve(width);
+            trimmed.append(field.data(), width - 3);
+            trimmed += "...";
+        } else {
+            trimmed = field;
+        }
+
+        sout << std::setw(width) << std::left << trimmed << " ";
     }
     sout << "\n";
 }
@@ -49,12 +62,13 @@ void render_impl(const hawk::RowsResult& res,
                  std::ostream& sout)
 {
     std::size_t MAX_COL_WIDTH = 20;
+    std::size_t MIN_COL_WIDTH = 4;
     std::vector<std::size_t> column_widths(schema.column_count(), 0);
     for (std::size_t i = 0; i < column_widths.size(); ++i) {
-        column_widths[i] = std::max(column_widths[i], schema.column_names()[i].size());
+        column_widths[i] = std::max(MIN_COL_WIDTH, schema.column_names()[i].size());
     }
     for (const auto& row : res.rows) {
-        for (std::size_t i = 0; i < row.fields().size(); ++i) {
+        for (std::size_t i = 0; i < row.length(); ++i) {
             column_widths[i] = std::min(MAX_COL_WIDTH, std::max(column_widths[i], row[i].size()));
         }
     }
