@@ -11,13 +11,37 @@
 
 namespace hawk::cli {
 
-inline const std::array<LibCommandInfo, 2> lib_command_table{{
+inline const std::array<LibCommandInfo, 5> lib_command_table{{
+    {
+        "columns",
+        "columns",
+        "Shows list of columns",
+        [](std::string_view args) -> LibCommand {
+            return parsers::columns(args);
+        }
+    },
+    {
+        "count",
+        "count",
+        "Shows the number of selected records",
+        [](std::string_view args) -> LibCommand {
+            return parsers::count(args);
+        }
+    },
     {
         "head",
         "head [n]",
         "Show the first n rows (default 10)",
         [](std::string_view args) -> LibCommand {
             return parsers::head(args);
+        }
+    },
+    {
+        "tail",
+        "tail [n]",
+        "Show the last n rows (default 10)",
+        [](std::string_view args) -> LibCommand {
+            return parsers::tail(args);
         }
     },
     {

@@ -7,6 +7,17 @@
 namespace hawk::cli {
 namespace parsers {
 
+ColumnsCommand columns(std::string_view) {
+    return ColumnsCommand{};
+}
+
+CountCommand count(std::string_view args) {
+    if (!args.empty()) {
+        throw std::invalid_argument("Invalid operator in count command: " + std::string(args));
+    }
+    return CountCommand{};
+}
+
 HeadCommand head(std::string_view args) {
     size_t count = 10; // default
     if (!args.empty()) {
@@ -17,6 +28,18 @@ HeadCommand head(std::string_view args) {
         }
     }
     return HeadCommand{count};
+}
+
+TailCommand tail(std::string_view args) {
+    size_t count = 10; // default
+    if (!args.empty()) {
+        try {
+            count = std::stoul(std::string(args));
+        } catch (const std::exception& e) {
+            throw std::invalid_argument("Invalid argument for tail command: " + std::string(args));
+        }
+    }
+    return TailCommand{count};
 }
 
 FilterCommand filter(std::string_view args) {

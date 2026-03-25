@@ -11,9 +11,20 @@ namespace hawk { enum class FilterOp; }
 
 namespace hawk {
 
+struct ColumnsCommand {
+};
+
+struct CountCommand {
+};
+
 struct HeadCommand {
     RecordCount max_records;
     explicit HeadCommand(RecordCount count) : max_records(count) {}
+};
+
+struct TailCommand {
+    RecordCount max_records;
+    explicit TailCommand(RecordCount count) : max_records(count) {}
 };
 
 struct FilterCommand {
@@ -25,7 +36,10 @@ struct FilterCommand {
 };
 
 using LibCommand = std::variant<
+    ColumnsCommand,
+    CountCommand,
     HeadCommand,
+    TailCommand,
     FilterCommand
 >;
 

@@ -18,6 +18,10 @@ struct CountResult {
     RecordCount count;
 };
 
+struct ColumnsResult {
+    std::vector<std::string> columns;
+};
+
 struct SuccessResult {
     double execution_time_ms;
 };
@@ -29,6 +33,7 @@ struct ErrorResult {
 using CommandResult = std::variant<
     RowsResult,
     CountResult,
+    ColumnsResult,
     SuccessResult,
     ErrorResult
 >;

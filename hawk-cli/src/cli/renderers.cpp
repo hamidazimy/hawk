@@ -85,6 +85,16 @@ void render_impl(const hawk::CountResult& res,
     sout << "Count: " << res.count << "\n";
 }
 
+void render_impl(const hawk::ColumnsResult& res,
+                 const hawk::Schema&,
+                 std::ostream& sout)
+{
+    std::size_t column_count = res.columns.size();
+    for (std::size_t i = 0; i < column_count; ++i) {
+        sout << std::setw(8) << std::left << "$col" + std::to_string(i + 1) << res.columns.at(i) << std::endl;
+    }
+}
+
 void render_impl(const hawk::SuccessResult& res,
                  const hawk::Schema&,
                  std::ostream& sout)

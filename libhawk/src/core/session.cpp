@@ -77,9 +77,10 @@ Session::Session(
             column_names.push_back(std::string(parsed_first_record.at(i)));
         }
     } else {
-        // Generate default column names
+        // Generate default column names??
         for (std::size_t i = 0; i < column_count; ++i) {
-            column_names.push_back("$col" + std::to_string(i + 1));
+            // column_names.push_back("$col" + std::to_string(i + 1));
+            column_names.push_back("");
         }
     }
 
@@ -113,6 +114,14 @@ CommandResult Session::execute(const LibCommand& command) {
     );
 }
 
+CommandResult Session::execute_impl(const ColumnsCommand&) {
+    return ColumnsResult{schema_.column_names()};
+}
+
+CommandResult Session::execute_impl(const CountCommand&) {
+    return CountResult{current_view_.size()};
+}
+
 CommandResult Session::execute_impl(const HeadCommand& cmd) {
     RecordCount max_visible_records = this->visible_row_count();
     RecordCount count = std::min(cmd.max_records, max_visible_records);
@@ -121,6 +130,20 @@ CommandResult Session::execute_impl(const HeadCommand& cmd) {
     rows.reserve(count);
 
     for (RecordIndex i = 0; i < count; ++i) {
+        rows.push_back(this->get_view_record(i));
+    }
+
+    return RowsResult{std::move(rows)};
+}
+
+CommandResult Session::execute_impl(const TailCommand& cmd) {
+    RecordCount max_visible_records = this->visible_row_count();
+    RecordCount count = std::min(cmd.max_records, max_visible_records);
+
+    std::vector<Row> rows;
+    rows.reserve(count);
+
+    for (RecordIndex i = max_visible_records - count; i < max_visible_records; ++i) {
         rows.push_back(this->get_view_record(i));
     }
 

@@ -54,7 +54,10 @@ private:
         std::unique_ptr<RecordSource> source
     );
 
+    CommandResult execute_impl(const ColumnsCommand&);
+    CommandResult execute_impl(const CountCommand&);
     CommandResult execute_impl(const HeadCommand&);
+    CommandResult execute_impl(const TailCommand&);
     CommandResult execute_impl(const FilterCommand&);
     // Add new overloads here when commands are introduced.
 
