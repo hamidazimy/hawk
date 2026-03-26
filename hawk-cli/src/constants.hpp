@@ -24,7 +24,10 @@ inline const std::string_view ASCII_LOGO = R"(
 )";
 
 inline const std::string VERSION_STR{
-    "Hawk Log Analyzer v" + std::string(hawk::version::PROJECT) + " " + BUILD_TYPE_STR
+    "Hawk Log Analyzer v" +
+    std::string(hawk::version::PROJECT) +
+    " (" + std::string(hawk::version::COMMIT) + ")" +
+    " " + BUILD_TYPE_STR
 };
 
 inline const std::string WELCOME_MSG{

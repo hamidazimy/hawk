@@ -4,13 +4,39 @@ cmake_minimum_required(VERSION 3.15)
 # Project
 # -----------------------------------------------------------------------------
 
-project(hawk VERSION 0.1.0 LANGUAGES CXX)
+project(hawk VERSION 0.2.2 LANGUAGES CXX)
 
 # -----------------------------------------------------------------------------
 # Build options
 # -----------------------------------------------------------------------------
 
 option(HAWK_STATIC_BUILD "Build with static linking" ON)
+
+find_package(Git QUIET)
+
+if(GIT_FOUND)
+    # Get short commit hash
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} rev-parse --short=7 HEAD
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        OUTPUT_VARIABLE GIT_COMMIT_HASH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+
+    # Check for dirty working tree
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} diff --quiet
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        RESULT_VARIABLE GIT_DIRTY_RESULT
+    )
+
+    if(NOT GIT_DIRTY_RESULT EQUAL 0)
+        set(GIT_COMMIT_HASH "${GIT_COMMIT_HASH}-dirty")
+    endif()
+
+else()
+    set(GIT_COMMIT_HASH "unknown")
+endif()
 
 if(TEST_BUILD)
     add_compile_definitions(TEST_BUILD)
@@ -94,4 +120,5 @@ message(STATUS "Build type:   ${CMAKE_BUILD_TYPE}")
 message(STATUS "Compiler:     ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "C++ standard: ${CMAKE_CXX_STANDARD}")
 message(STATUS "Static build: ${HAWK_STATIC_BUILD}")
+message(STATUS "Git commit:   ${GIT_COMMIT_HASH}")
 message(STATUS "")
