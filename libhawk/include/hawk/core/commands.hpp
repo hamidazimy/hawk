@@ -35,12 +35,19 @@ struct FilterCommand {
         : column(std::move(column)), op(op), value(std::move(value)) {}
 };
 
+struct ExportCommand {
+    std::string path;
+    explicit ExportCommand(std::string path)
+        : path(path) {}
+};
+
 using LibCommand = std::variant<
     ColumnsCommand,
     CountCommand,
     HeadCommand,
     TailCommand,
-    FilterCommand
+    FilterCommand,
+    ExportCommand
 >;
 
 } // namespace hawk

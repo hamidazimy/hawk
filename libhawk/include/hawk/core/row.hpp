@@ -25,6 +25,8 @@ public:
 
     RecordIndex index() const noexcept { return index_; }
 
+    std::string_view record() const noexcept { return record_; }
+
     std::size_t length() const noexcept { return fields_.size(); }
 
     std::string_view operator[](RecordIndex idx) const noexcept {

@@ -14,6 +14,8 @@ namespace renderers {
 
 namespace {
 
+// ----- Helper functions -----
+
 void render_hline(char ch,
                   const std::vector<std::size_t>& column_widths,
                   std::ostream& sout)
@@ -57,6 +59,8 @@ void render_row(const hawk::Row& row,
     sout << "\n";
 }
 
+// ----- Render functions implementations -----
+
 void render_impl(const hawk::RowsResult& res,
                  const hawk::Schema& schema,
                  std::ostream& sout)
@@ -92,6 +96,18 @@ void render_impl(const hawk::ColumnsResult& res,
     std::size_t column_count = res.columns.size();
     for (std::size_t i = 0; i < column_count; ++i) {
         sout << std::setw(8) << std::left << "$col" + std::to_string(i + 1) << res.columns.at(i) << std::endl;
+    }
+}
+
+void render_impl(const hawk::ExportResult& res,
+                 const hawk::Schema&,
+                 std::ostream& sout)
+{
+    if (res.header.has_value()) {
+        sout << res.header.value() << std::endl;
+    }
+    for (const auto& row : res.rows) {
+        sout << row.record() << std::endl;
     }
 }
 

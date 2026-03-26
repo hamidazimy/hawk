@@ -66,5 +66,17 @@ FilterCommand filter(std::string_view args) {
     return FilterCommand{parts[0], op, parts[2]};
 }
 
+ExportCommand eXport(std::string_view args) {
+    if (args.empty()) {
+        throw std::invalid_argument("Please provide a path.");
+    }
+    auto parts = utils::split(std::string(args), ' ');
+    if (parts.size() != 1) {
+        throw std::invalid_argument("Invalid arguments for export command. Please provide one argument.");
+    }
+    auto path = parts.at(0);
+    return ExportCommand{path};
+}
+
 } // namespace parsers
 } // namespace hawk::cli

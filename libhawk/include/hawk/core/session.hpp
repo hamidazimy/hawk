@@ -59,6 +59,7 @@ private:
     CommandResult execute_impl(const HeadCommand&);
     CommandResult execute_impl(const TailCommand&);
     CommandResult execute_impl(const FilterCommand&);
+    CommandResult execute_impl(const ExportCommand&);
     // Add new overloads here when commands are introduced.
 
     bool evaluate(const std::string_view& lhs, FilterOp op, const std::string& rhs) const;

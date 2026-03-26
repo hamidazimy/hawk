@@ -4,7 +4,9 @@
 #include <hawk/core/types.hpp>
 #include <hawk/core/row.hpp>
 
+#include <optional>
 #include <string>
+#include <string_view>
 #include <variant>
 #include <vector>
 
@@ -22,8 +24,13 @@ struct ColumnsResult {
     std::vector<std::string> columns;
 };
 
+struct ExportResult {
+    std::optional<std::string_view> header;
+    std::vector<Row> rows;
+};
+
 struct SuccessResult {
-    double execution_time_ms;
+    long int execution_time_ms;
 };
 
 struct ErrorResult {
@@ -34,6 +41,7 @@ using CommandResult = std::variant<
     RowsResult,
     CountResult,
     ColumnsResult,
+    ExportResult,
     SuccessResult,
     ErrorResult
 >;

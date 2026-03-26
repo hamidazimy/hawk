@@ -114,6 +114,21 @@ CommandResult Session::execute(const LibCommand& command) {
     );
 }
 
+CommandResult Session::execute_impl(const ExportCommand&) {
+    auto count = current_view_.size();
+    std::vector<Row> rows;
+    rows.reserve(count);
+
+    for (RecordIndex i = 0; i < count; ++i) {
+        rows.push_back(this->get_view_record(i));
+    }
+
+    if (config_.has_header.value_or(false)) {
+        return ExportResult{source_->get_record(0), std::move(rows)};
+    }
+    return ExportResult{{}, std::move(rows)};
+}
+
 CommandResult Session::execute_impl(const ColumnsCommand&) {
     return ColumnsResult{schema_.column_names()};
 }

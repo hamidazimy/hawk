@@ -9,6 +9,7 @@
 
 #include <hawk/hawk.hpp>
 
+#include <fstream>
 #include <iostream>
 #include <iomanip>
 #include <sstream>
@@ -94,6 +95,15 @@ void REPL::run() {
                 try {
                     auto lib_cmd = info.parser(args);
                     auto result = session_->execute(lib_cmd);
+
+                    if (auto* export_cmd = std::get_if<ExportCommand>(&lib_cmd)) {
+                        std::ofstream fout(export_cmd->path);
+                        if (!fout) throw  std::ios_base::failure("cannot open file '" + export_cmd->path + "'");
+                        renderers::render_result(result, session_->schema(), fout);
+                        handled = true;
+                        break;
+                    }
+
                     renderers::render_result(result, session_->schema());
                 } catch (const std::exception& e) {
                     std::cout << "Error: " << e.what() << "\n";
