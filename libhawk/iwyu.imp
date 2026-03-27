@@ -1,0 +1,16 @@
+[
+    { include: ["\"hawk/core/types.hpp\"",             "private", "<hawk/hawk.hpp>", "public"] },
+    { include: ["\"hawk/core/session.hpp\"",           "private", "<hawk/hawk.hpp>", "public"] },
+    { include: ["\"hawk/core/log_file.hpp\"",          "private", "<hawk/hawk.hpp>", "public"] },
+    { include: ["\"hawk/core/record_source.hpp\"",     "private", "<hawk/hawk.hpp>", "public"] },
+    { include: ["\"hawk/core/record_parser.hpp\"",     "private", "<hawk/hawk.hpp>", "public"] },
+    { include: ["\"hawk/core/schema.hpp\"",            "private", "<hawk/hawk.hpp>", "public"] },
+    { include: ["\"hawk/core/row.hpp\"",               "private", "<hawk/hawk.hpp>", "public"] },
+    { include: ["\"hawk/core/view.hpp\"",              "private", "<hawk/hawk.hpp>", "public"] },
+    { include: ["\"hawk/core/filter.hpp\"",            "private", "<hawk/hawk.hpp>", "public"] },
+    { include: ["\"hawk/core/commands.hpp\"",          "private", "<hawk/hawk.hpp>", "public"] },
+    { include: ["\"hawk/core/results.hpp\"",           "private", "<hawk/hawk.hpp>", "public"] },
+    { include: ["\"hawk/platform/file_mapping.hpp\"",  "private", "<hawk/hawk.hpp>", "public"] },
+    { include: ["\"hawk/utils/format_inference.hpp\"", "private", "<hawk/hawk.hpp>", "public"] },
+    { include: ["\"hawk/utils/utils.hpp\"",            "private", "<hawk/hawk.hpp>", "public"] },
+]
