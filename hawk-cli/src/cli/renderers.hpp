@@ -4,6 +4,7 @@
 #include <hawk/hawk.hpp>
 
 #include <iostream>
+#include <string>
 
 namespace hawk::cli {
 namespace renderers {

@@ -1,20 +1,25 @@
 #include "repl.hpp"
 
+#include <cli/command_info.hpp>
+#include <cli/cli_commands.hpp>
 #include <cli/command_tables.hpp>
 #include <cli/renderers.hpp>
 
 #include <constants.hpp>
-#include <helpers/config_builder.hpp>
 #include <helpers/output_decorator.hpp>
 
 #include <hawk/hawk.hpp>
 
+#include <array>
+#include <exception>
 #include <fstream>
 #include <iostream>
 #include <iomanip>
-#include <sstream>
-#include <algorithm>
+#include <stdexcept>
+#include <string>
+#include <string_view>
 #include <variant>
+#include <utility>
 
 namespace hawk::cli {
 

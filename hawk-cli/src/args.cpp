@@ -3,12 +3,10 @@
 #include <constants.hpp>
 #include <helpers/utils.hpp>
 
-#include <hawk/hawk.hpp>
-
-#include <algorithm>
+#include <exception>
 #include <iostream>
-#include <cstring>
 #include <stdexcept>
+#include <string_view>
 
 namespace hawk::cli {
 

@@ -1,11 +1,8 @@
 #ifndef HAWK_CLI_ARGS_HPP
 #define HAWK_CLI_ARGS_HPP
 
-#include <hawk/hawk.hpp>
-
 #include <optional>
 #include <string>
-#include <vector>
 
 namespace hawk::cli {
 

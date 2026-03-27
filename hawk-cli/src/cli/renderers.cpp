@@ -4,9 +4,14 @@
 
 #include <hawk/hawk.hpp>
 
+#include <algorithm>
+#include <cstddef>
 #include <iomanip>
 #include <iostream>
+#include <optional>
 #include <string>
+#include <string_view>
+#include <variant>
 #include <vector>
 
 namespace hawk::cli {

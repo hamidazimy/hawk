@@ -1,14 +1,14 @@
 #include <hawk/hawk.hpp>
 
 #include <args.hpp>
-#include <helpers/output_decorator.hpp>
 #include <helpers/config_builder.hpp>
 #include <cli/renderers.hpp>
 #include <cli/repl.hpp>
 
-#include <iostream>
+#include <exception>
 #include <memory>
 #include <string>
+#include <utility>
 
 int main(int argc, char* argv[]) {
     // ----------------------------

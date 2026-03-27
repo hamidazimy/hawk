@@ -1,5 +1,6 @@
 #include "output_decorator.hpp"
 
+#include <cctype>
 #include <cstdint>
 
 namespace hawk::cli {

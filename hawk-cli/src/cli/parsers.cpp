@@ -1,8 +1,11 @@
 #include "parsers.hpp"
 
+#include <exception>
+#include <stddef.h>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace hawk::cli {
 namespace parsers {

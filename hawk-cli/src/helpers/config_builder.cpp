@@ -1,13 +1,13 @@
 #include "config_builder.hpp"
 
+#include <args.hpp>
 #include <helpers/utils.hpp>
-#include <helpers/output_decorator.hpp>
 
 #include <hawk/hawk.hpp>
 
 #include <iostream>
-#include <algorithm>
-#include <cctype>
+#include <optional>
+#include <stdlib.h>
 
 namespace hawk::cli {
 

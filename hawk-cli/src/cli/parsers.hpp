@@ -5,6 +5,8 @@
 
 #include <hawk/hawk.hpp>
 
+#include <string_view>
+
 namespace hawk::cli {
 namespace parsers {
 
