@@ -1,11 +1,13 @@
 #include "renderers.hpp"
 
 #include <helpers/output_decorator.hpp>
+#include <helpers/utils.hpp>
 
 #include <hawk/hawk.hpp>
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <iomanip>
 #include <iostream>
 #include <optional>
@@ -23,8 +25,13 @@ namespace {
 
 void render_hline(char ch,
                   const std::vector<std::size_t>& column_widths,
+                  const std::uint8_t index_width,
+                  std::string index_sep,
                   std::ostream& sout)
 {
+    if (index_width > 0) {
+        sout << std::setw(index_width + 1) << std::setfill(' ') << "" << index_sep << " ";
+    }
     for (std::size_t i = 0; i < column_widths.size(); ++i)
         sout << std::setw(column_widths[i]) << std::setfill(ch) << "" << " ";
     sout << "\n" << std::setfill(' ');
@@ -32,19 +39,27 @@ void render_hline(char ch,
 
 void render_header(const std::vector<std::string>& column_names,
                    const std::vector<std::size_t>& column_widths,
+                   const std::uint8_t index_width,
                    std::ostream& sout)
 {
-    render_hline('-', column_widths, sout);
+    render_hline('-', column_widths, index_width, "┐", sout);
+    if (index_width > 0) {
+        sout << std::setw(index_width) << std::right << "#" << " │ ";
+    }
     for (std::size_t i = 0; i < column_widths.size(); ++i)
         sout << std::setw(column_widths[i]) << std::left << column_names[i] << " ";
     sout << "\n";
-    render_hline('-', column_widths, sout);
+    render_hline('-', column_widths, index_width, "┤", sout);
 }
 
 void render_row(const hawk::Row& row,
                 const std::vector<std::size_t>& column_widths,
+                const std::uint8_t index_width,
                 std::ostream& sout)
 {
+    if (index_width > 0) {
+        sout << std::setw(index_width) << std::right << row.index() << " │ ";
+    }
     for (std::size_t i = 0; i < row.length(); ++i) {
         auto field = row.at(i);
         const auto width = column_widths[i];
@@ -73,6 +88,7 @@ void render_impl(const hawk::RowsResult& res,
     std::size_t MAX_COL_WIDTH = 20;
     std::size_t MIN_COL_WIDTH = 4;
     std::vector<std::size_t> column_widths(schema.column_count(), 0);
+    std::uint8_t index_width = 1;
     for (std::size_t i = 0; i < column_widths.size(); ++i) {
         column_widths[i] = std::max(MIN_COL_WIDTH, schema.column_names()[i].size());
     }
@@ -80,10 +96,11 @@ void render_impl(const hawk::RowsResult& res,
         for (std::size_t i = 0; i < row.length(); ++i) {
             column_widths[i] = std::min(MAX_COL_WIDTH, std::max(column_widths[i], row[i].size()));
         }
+        index_width = std::max(index_width, hawk::cli::utils::digits(row.index()));
     }
-    render_header(schema.column_names(), column_widths, sout);
+    render_header(schema.column_names(), column_widths, index_width, sout);
     for (const auto& row : res.rows) {
-        render_row(row, column_widths, sout);
+        render_row(row, column_widths, index_width, sout);
     }
 }
 

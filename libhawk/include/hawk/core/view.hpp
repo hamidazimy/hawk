@@ -14,45 +14,35 @@ class View {
 public:
     View()
         : total_records_(0)
-        , start_index_(0)
         , is_identity_(true)
     {}
 
     View(
-        RecordCount total_records,
-        RecordIndex start_index
+        RecordCount total_records
     )
         : total_records_(total_records)
-        , start_index_(start_index)
         , is_identity_(true)
     {}
 
     View(
         std::vector<RecordIndex> indices,
-        RecordCount total_records,
-        RecordIndex start_index
+        RecordCount total_records
     )
         : indices_(std::move(indices))
         , total_records_(total_records)
-        , start_index_(start_index)
         , is_identity_(false)
     {}
 
-    static View identity(RecordCount total_records, RecordIndex start_index) {
-        return View(total_records, start_index);
+    static View identity(RecordCount total_records) {
+        return View(total_records);
     }
 
     RecordCount size() const noexcept {
-        if (is_identity_) {
-            return (start_index_ <= total_records_)
-                ? (total_records_ - start_index_)
-                : 0;
-        }
-        return indices_.size();
+        return is_identity_ ? total_records_ : indices_.size();
     }
 
     RecordIndex operator[](std::size_t i) const noexcept {
-        return is_identity_ ? start_index_ + i : indices_[i];
+        return is_identity_ ? i : indices_[i];
     }
 
     RecordIndex at(std::size_t i) const {
@@ -78,13 +68,12 @@ public:
             }
         });
 
-        return View(std::move(result), total_records_, start_index_);
+        return View(std::move(result), total_records_);
     }
 
 private:
     std::vector<RecordIndex> indices_;
     RecordCount total_records_ = 0;
-    RecordIndex start_index_ = 0;
     bool is_identity_ = true;
 };
 

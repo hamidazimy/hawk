@@ -87,7 +87,7 @@ Session::Session(
     schema_ = Schema(column_count);
     schema_.set_column_names(column_names);
 
-    current_view_ = View::identity(source_->record_count(), config_.has_header.value() ? 1 : 0);
+    current_view_ = View::identity(source_->record_count() - config_.has_header.value());
 }
 
 RecordCount Session::visible_row_count() const noexcept {
@@ -100,9 +100,10 @@ Row Session::get_view_record(RecordIndex view_index) const {
 }
 
 Row Session::get_file_record(RecordIndex file_index) const {
-    auto record = source_->get_record(file_index);
+    auto source_index = file_index + config_.has_header.value();
+    auto record = source_->get_record(source_index);
     auto fields = parser_->parse_record(record);
-    return Row(file_index, record, fields);
+    return Row(file_index + 1, record, fields); // 1-based indexing
 }
 
 CommandResult Session::execute(const LibCommand& command) {
@@ -176,9 +177,8 @@ CommandResult Session::execute_impl(const FilterCommand& cmd) {
 
     current_view_ = current_view_.filter(
         [&](RecordIndex row_index) {
-            const auto& record = source_->get_record(row_index);
-            auto fields = parser_->parse_record(record);
-            return evaluate(fields[col_idx], cmd.op, cmd.value);
+            auto row = get_file_record(row_index);
+            return evaluate(row[col_idx], cmd.op, cmd.value);
         }
     );
 
