@@ -138,6 +138,10 @@ CommandResult Session::execute_impl(const CountCommand&) {
     return CountResult{current_view_.size()};
 }
 
+CommandResult Session::execute_impl(const PeekCommand& cmd) {
+    return RowsResult{{this->get_file_record(cmd.index - 1)}};
+}
+
 CommandResult Session::execute_impl(const HeadCommand& cmd) {
     RecordCount max_visible_records = this->visible_row_count();
     RecordCount count = std::min(cmd.max_records, max_visible_records);

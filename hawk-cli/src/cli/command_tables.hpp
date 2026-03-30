@@ -11,7 +11,7 @@
 
 namespace hawk::cli {
 
-inline const std::array<LibCommandInfo, 6> lib_command_table{{
+inline const std::array<LibCommandInfo, 7> lib_command_table{{
     {
         "columns",
         "columns",
@@ -26,6 +26,14 @@ inline const std::array<LibCommandInfo, 6> lib_command_table{{
         "Shows the number of selected records",
         [](std::string_view args) -> LibCommand {
             return parsers::count(args);
+        }
+    },
+    {
+        "peek",
+        "peek [i]",
+        "Show the ith rows",
+        [](std::string_view args) -> LibCommand {
+            return parsers::peek(args);
         }
     },
     {

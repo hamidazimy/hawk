@@ -17,6 +17,10 @@ struct ColumnsCommand {
 struct CountCommand {
 };
 
+struct PeekCommand {
+    RecordIndex index;
+};
+
 struct HeadCommand {
     RecordCount max_records;
     explicit HeadCommand(RecordCount count) : max_records(count) {}
@@ -44,6 +48,7 @@ struct ExportCommand {
 using LibCommand = std::variant<
     ColumnsCommand,
     CountCommand,
+    PeekCommand,
     HeadCommand,
     TailCommand,
     FilterCommand,

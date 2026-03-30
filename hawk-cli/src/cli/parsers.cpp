@@ -21,6 +21,19 @@ CountCommand count(std::string_view args) {
     return CountCommand{};
 }
 
+PeekCommand peek(std::string_view args) {
+    if (args.empty()) {
+        throw std::invalid_argument("Please provide a record index to show.");
+    }
+    RecordIndex index;
+    try {
+        index = std::stoul(std::string(args));
+    } catch (const std::exception& e) {
+        throw std::invalid_argument("Invalid argument for show command: " + std::string(args));
+    }
+    return PeekCommand{index};
+}
+
 HeadCommand head(std::string_view args) {
     size_t count = 10; // default
     if (!args.empty()) {
