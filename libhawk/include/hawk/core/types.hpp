@@ -14,6 +14,10 @@ using RecordIndex = std::uint64_t;
 
 constexpr RecordIndex INVALID_RECORD_INDEX = static_cast<RecordIndex>(-1);
 
+using ColumnCount = std::size_t;
+
+using ColumnIndex = std::size_t;
+
 } // namespace hawk
 
 #endif // HAWK_TYPES_HPP

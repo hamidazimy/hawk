@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <stdexcept>
+#include <string_view>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -87,23 +88,17 @@ Session::Session(
     schema_ = Schema(column_count);
     schema_.set_column_names(column_names);
 
-    current_view_ = View::identity(source_->record_count() - config_.has_header.value());
+    current_view_ = View::identity(row_count());
 }
 
-RecordCount Session::visible_row_count() const noexcept {
-    return current_view_.size();
-}
-
-Row Session::get_view_record(RecordIndex view_index) const {
+Row Session::make_row_from_view(RecordIndex view_index) const {
     auto file_index = current_view_.at(view_index);
-    return get_file_record(file_index);
+    return make_row_from_file(file_index);
 }
 
-Row Session::get_file_record(RecordIndex file_index) const {
-    auto source_index = file_index + config_.has_header.value();
-    auto record = source_->get_record(source_index);
-    auto fields = parser_->parse_record(record);
-    return Row(file_index + 1, record, fields); // 1-based indexing
+Row Session::make_row_from_file(RecordIndex file_index) const {
+    auto record = source_->get_record(to_source_index(file_index));
+    return Row(file_index, record, parser_.get());
 }
 
 CommandResult Session::execute(const LibCommand& command) {
@@ -121,13 +116,14 @@ CommandResult Session::execute_impl(const ExportCommand&) {
     rows.reserve(count);
 
     for (RecordIndex i = 0; i < count; ++i) {
-        rows.push_back(this->get_view_record(i));
+        rows.emplace_back(make_row_from_view(i));
     }
 
-    if (config_.has_header.value_or(false)) {
-        return ExportResult{source_->get_record(0), std::move(rows)};
+    std::string_view header = {};
+    if (config_.has_header.value()) {
+        header = source_->get_record(0);
     }
-    return ExportResult{{}, std::move(rows)};
+    return ExportResult{header, std::move(rows)};
 }
 
 CommandResult Session::execute_impl(const ColumnsCommand&) {
@@ -139,32 +135,38 @@ CommandResult Session::execute_impl(const CountCommand&) {
 }
 
 CommandResult Session::execute_impl(const PeekCommand& cmd) {
-    return RowsResult{{this->get_file_record(cmd.index - 1)}};
+    if (cmd.index >= row_count()) {
+        return ErrorResult{"Index out of range"};
+    }
+
+    return RowsResult{{make_row_from_file(cmd.index)}};
 }
 
 CommandResult Session::execute_impl(const HeadCommand& cmd) {
-    RecordCount max_visible_records = this->visible_row_count();
+    RecordCount max_visible_records = visible_row_count();
     RecordCount count = std::min(cmd.max_records, max_visible_records);
 
     std::vector<Row> rows;
     rows.reserve(count);
 
     for (RecordIndex i = 0; i < count; ++i) {
-        rows.push_back(this->get_view_record(i));
+        rows.emplace_back(make_row_from_view(i));
     }
 
     return RowsResult{std::move(rows)};
 }
 
 CommandResult Session::execute_impl(const TailCommand& cmd) {
-    RecordCount max_visible_records = this->visible_row_count();
+    RecordCount max_visible_records = visible_row_count();
     RecordCount count = std::min(cmd.max_records, max_visible_records);
 
     std::vector<Row> rows;
     rows.reserve(count);
 
-    for (RecordIndex i = max_visible_records - count; i < max_visible_records; ++i) {
-        rows.push_back(this->get_view_record(i));
+    const RecordIndex start = max_visible_records - count;
+
+    for (RecordIndex i = start; i < max_visible_records; ++i) {
+        rows.emplace_back(make_row_from_view(i));
     }
 
     return RowsResult{std::move(rows)};
@@ -177,55 +179,15 @@ CommandResult Session::execute_impl(const FilterCommand& cmd) {
         return ErrorResult{"Unknown column: " + cmd.column};
     }
 
-    const auto col_idx = *column_index;
+    FilterPredicate predicate{*column_index, cmd.op, cmd.value};
 
     current_view_ = current_view_.filter(
-        [&](RecordIndex row_index) {
-            auto row = get_file_record(row_index);
-            return evaluate(row[col_idx], cmd.op, cmd.value);
+        [this, predicate](RecordIndex row_index) {
+            return predicate(make_row_from_file(row_index));
         }
     );
 
     return CountResult{current_view_.size()};
-}
-
-bool Session::evaluate(const std::string_view& lhs,
-                       FilterOp op,
-                       const std::string& rhs) const
-{
-    auto try_parse_double = [](const std::string& s, double& out) -> bool {
-        char* end = nullptr;
-        out = std::strtod(s.c_str(), &end);
-        return end != s.c_str() && *end == '\0';
-    };
-
-    double lhs_num;
-    double rhs_num;
-
-    bool lhs_is_num = try_parse_double(std::string(lhs), lhs_num);
-    bool rhs_is_num = try_parse_double(rhs, rhs_num);
-
-    if (lhs_is_num && rhs_is_num) {
-        switch (op) {
-            case FilterOp::EQ: return lhs_num == rhs_num;
-            case FilterOp::NE: return lhs_num != rhs_num;
-            case FilterOp::GT: return lhs_num >  rhs_num;
-            case FilterOp::LT: return lhs_num <  rhs_num;
-            case FilterOp::GE: return lhs_num >= rhs_num;
-            case FilterOp::LE: return lhs_num <= rhs_num;
-        }
-    }
-
-    switch (op) {
-        case FilterOp::EQ: return lhs == rhs;
-        case FilterOp::NE: return lhs != rhs;
-        case FilterOp::GT: return lhs >  rhs;
-        case FilterOp::LT: return lhs <  rhs;
-        case FilterOp::GE: return lhs >= rhs;
-        case FilterOp::LE: return lhs <= rhs;
-    }
-
-    return false;
 }
 
 } // namespace hawk

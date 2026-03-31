@@ -31,7 +31,7 @@ PeekCommand peek(std::string_view args) {
     } catch (const std::exception& e) {
         throw std::invalid_argument("Invalid argument for show command: " + std::string(args));
     }
-    return PeekCommand{index};
+    return PeekCommand{index - 1}; // changing 1-based indexing of cli to 0-based indexing of the lib.
 }
 
 HeadCommand head(std::string_view args) {

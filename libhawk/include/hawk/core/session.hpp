@@ -12,10 +12,8 @@
 #include <memory>
 #include <optional>
 #include <string>
-#include <string_view>
 
 namespace hawk { class Row; }
-namespace hawk { enum class FilterOp; }
 namespace hawk { namespace inference { struct FormatInferenceResult; } }
 
 namespace hawk {
@@ -42,10 +40,6 @@ public:
     const Schema& schema() const noexcept { return schema_; }
     const View& view() const noexcept { return current_view_; }
 
-    RecordCount visible_row_count() const noexcept;
-    Row get_view_record(RecordIndex view_index) const;
-    Row get_file_record(RecordIndex file_index) const;
-
     CommandResult execute(const LibCommand& command);
 
 private:
@@ -54,6 +48,19 @@ private:
         std::unique_ptr<RecordSource> source
     );
 
+    RecordIndex to_source_index(RecordIndex file_index) const noexcept {
+        return file_index + config_.has_header.value();
+    }
+
+    RecordCount row_count() const noexcept {
+        return source_->record_count() - config_.has_header.value();
+    }
+
+    RecordCount visible_row_count() const noexcept { return current_view_.size(); }
+
+    Row make_row_from_view(RecordIndex view_index) const;
+    Row make_row_from_file(RecordIndex file_index) const;
+
     CommandResult execute_impl(const ColumnsCommand&);
     CommandResult execute_impl(const CountCommand&);
     CommandResult execute_impl(const PeekCommand&);
@@ -61,9 +68,6 @@ private:
     CommandResult execute_impl(const TailCommand&);
     CommandResult execute_impl(const FilterCommand&);
     CommandResult execute_impl(const ExportCommand&);
-    // Add new overloads here when commands are introduced.
-
-    bool evaluate(const std::string_view& lhs, FilterOp op, const std::string& rhs) const;
 
 private:
     const SessionConfig config_;

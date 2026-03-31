@@ -58,10 +58,10 @@ void render_row(const hawk::Row& row,
                 std::ostream& sout)
 {
     if (index_width > 0) {
-        sout << std::setw(index_width) << std::right << row.index() << " │ ";
+        sout << std::setw(index_width) << std::right << row.index() + 1 << " │ ";
     }
     for (std::size_t i = 0; i < row.length(); ++i) {
-        auto field = row.at(i);
+        auto field = row.get(i);
         const auto width = column_widths[i];
 
         std::string trimmed;
@@ -94,9 +94,9 @@ void render_impl(const hawk::RowsResult& res,
     }
     for (const auto& row : res.rows) {
         for (std::size_t i = 0; i < row.length(); ++i) {
-            column_widths[i] = std::min(MAX_COL_WIDTH, std::max(column_widths[i], row[i].size()));
+            column_widths[i] = std::min(MAX_COL_WIDTH, std::max(column_widths[i], row.get(i).size()));
         }
-        index_width = std::max(index_width, hawk::cli::utils::digits(row.index()));
+        index_width = std::max(index_width, hawk::cli::utils::digits(row.index() + 1));
     }
     render_header(schema.column_names(), column_widths, index_width, sout);
     for (const auto& row : res.rows) {
