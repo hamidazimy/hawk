@@ -6,6 +6,7 @@
 #include <hawk/core/schema.hpp>
 #include <hawk/core/row.hpp>
 #include <hawk/core/view.hpp>
+#include <hawk/core/projection.hpp>
 #include <hawk/core/filter.hpp>
 #include <hawk/core/commands.hpp>
 #include <hawk/core/results.hpp>
@@ -89,6 +90,7 @@ Session::Session(
     schema_.set_column_names(column_names);
 
     current_view_ = View::identity(row_count());
+    current_projection_ = Projection(column_count);
 }
 
 Row Session::make_row_from_view(RecordIndex view_index) const {
@@ -139,7 +141,10 @@ CommandResult Session::execute_impl(const PeekCommand& cmd) {
         return ErrorResult{"Index out of range"};
     }
 
-    return RowsResult{{make_row_from_file(cmd.index)}};
+    return RowsResult{
+        {make_row_from_file(cmd.index)},
+        &current_projection_
+    };
 }
 
 CommandResult Session::execute_impl(const HeadCommand& cmd) {
@@ -153,7 +158,10 @@ CommandResult Session::execute_impl(const HeadCommand& cmd) {
         rows.emplace_back(make_row_from_view(i));
     }
 
-    return RowsResult{std::move(rows)};
+    return RowsResult{
+        std::move(rows),
+        &current_projection_
+    };
 }
 
 CommandResult Session::execute_impl(const TailCommand& cmd) {
@@ -169,7 +177,10 @@ CommandResult Session::execute_impl(const TailCommand& cmd) {
         rows.emplace_back(make_row_from_view(i));
     }
 
-    return RowsResult{std::move(rows)};
+    return RowsResult{
+        std::move(rows),
+        &current_projection_
+    };
 }
 
 CommandResult Session::execute_impl(const FilterCommand& cmd) {
@@ -188,6 +199,18 @@ CommandResult Session::execute_impl(const FilterCommand& cmd) {
     );
 
     return CountResult{current_view_.size()};
+}
+
+CommandResult Session::execute_impl(const SelectCommand& cmd) {
+    std::vector<ColumnIndex> columns;
+
+    for (auto column_name : cmd.columns) {
+        columns.push_back(*schema_.find_column(column_name));
+    }
+
+    current_projection_.select(columns);
+
+    return SuccessResult();
 }
 
 } // namespace hawk

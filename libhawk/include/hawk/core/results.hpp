@@ -10,10 +10,13 @@
 #include <variant>
 #include <vector>
 
+namespace hawk { class Projection; }
+
 namespace hawk {
 
 struct RowsResult {
     std::vector<Row> rows;
+    const Projection* projection;
 };
 
 struct CountResult {

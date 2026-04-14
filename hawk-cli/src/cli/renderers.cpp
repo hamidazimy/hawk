@@ -38,6 +38,7 @@ void render_hline(char ch,
 }
 
 void render_header(const std::vector<std::string>& column_names,
+                   const hawk::Projection* projection,
                    const std::vector<std::size_t>& column_widths,
                    const std::uint8_t index_width,
                    std::ostream& sout)
@@ -46,13 +47,16 @@ void render_header(const std::vector<std::string>& column_names,
     if (index_width > 0) {
         sout << std::setw(index_width) << std::right << "#" << " │ ";
     }
-    for (std::size_t i = 0; i < column_widths.size(); ++i)
-        sout << std::setw(column_widths[i]) << std::left << column_names[i] << " ";
+    for (std::size_t i = 0; i < column_widths.size(); ++i) {
+        ColumnIndex col = projection->at(i);
+        sout << std::setw(column_widths[i]) << std::left << column_names[col] << " ";
+    }
     sout << "\n";
     render_hline('-', column_widths, index_width, "┤", sout);
 }
 
 void render_row(const hawk::Row& row,
+                const hawk::Projection* projection,
                 const std::vector<std::size_t>& column_widths,
                 const std::uint8_t index_width,
                 std::ostream& sout)
@@ -60,8 +64,10 @@ void render_row(const hawk::Row& row,
     if (index_width > 0) {
         sout << std::setw(index_width) << std::right << row.index() + 1 << " │ ";
     }
-    for (std::size_t i = 0; i < row.length(); ++i) {
-        auto field = row.get(i);
+
+    ColumnCount column_count = projection->size();
+    for (std::size_t i = 0; i < column_count; ++i) {
+        auto field = row.get_projected(projection, i);
         const auto width = column_widths[i];
 
         std::string trimmed;
@@ -85,22 +91,30 @@ void render_impl(const hawk::RowsResult& res,
                  const hawk::Schema& schema,
                  std::ostream& sout)
 {
-    std::size_t MAX_COL_WIDTH = 20;
-    std::size_t MIN_COL_WIDTH = 4;
-    std::vector<std::size_t> column_widths(schema.column_count(), 0);
+    const std::size_t MAX_COL_WIDTH = 20;
+    const std::size_t MIN_COL_WIDTH = 4;
+    ColumnCount column_count = res.projection->size();
+    std::vector<std::size_t> column_widths(column_count, 0);
     std::uint8_t index_width = 1;
-    for (std::size_t i = 0; i < column_widths.size(); ++i) {
-        column_widths[i] = std::max(MIN_COL_WIDTH, schema.column_names()[i].size());
+    for (std::size_t i = 0; i < column_count; ++i) {
+        ColumnIndex col = res.projection->at(i);
+        column_widths[i] = std::max(MIN_COL_WIDTH, schema.column_names()[col].size());
     }
     for (const auto& row : res.rows) {
-        for (std::size_t i = 0; i < row.length(); ++i) {
-            column_widths[i] = std::min(MAX_COL_WIDTH, std::max(column_widths[i], row.get(i).size()));
+        for (std::size_t i= 0; i < column_count; ++i) {
+            column_widths[i] = std::min(
+                MAX_COL_WIDTH,
+                std::max(
+                    column_widths[i],
+                    row.get_projected(res.projection, i).size()
+                )
+            );
         }
         index_width = std::max(index_width, hawk::cli::utils::digits(row.index() + 1));
     }
-    render_header(schema.column_names(), column_widths, index_width, sout);
+    render_header(schema.column_names(), res.projection, column_widths, index_width, sout);
     for (const auto& row : res.rows) {
-        render_row(row, column_widths, index_width, sout);
+        render_row(row, res.projection, column_widths, index_width, sout);
     }
 }
 

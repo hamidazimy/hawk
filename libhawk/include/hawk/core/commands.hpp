@@ -6,6 +6,7 @@
 #include <string>
 #include <utility>
 #include <variant>
+#include <vector>
 
 namespace hawk { enum class FilterOp; }
 
@@ -39,6 +40,10 @@ struct FilterCommand {
         : column(std::move(column)), op(op), value(std::move(value)) {}
 };
 
+struct SelectCommand {
+    std::vector<std::string> columns;
+};
+
 struct ExportCommand {
     std::string path;
     explicit ExportCommand(std::string path)
@@ -52,6 +57,7 @@ using LibCommand = std::variant<
     HeadCommand,
     TailCommand,
     FilterCommand,
+    SelectCommand,
     ExportCommand
 >;
 

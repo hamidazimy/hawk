@@ -6,6 +6,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <utility>
 
 namespace hawk::cli {
 namespace parsers {
@@ -80,6 +81,12 @@ FilterCommand filter(std::string_view args) {
         throw std::invalid_argument("Invalid operator in filter command: " + parts[1]);
     }
     return FilterCommand{parts[0], op, parts[2]};
+}
+
+SelectCommand select(std::string_view args) {
+    auto parts = utils::split(std::string(args), ' ');
+    auto cols = utils::split(parts[0], ',');
+    return SelectCommand{std::move(cols)};
 }
 
 ExportCommand eXport(std::string_view args) {

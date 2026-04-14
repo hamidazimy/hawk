@@ -8,6 +8,7 @@
 #include <vector>
 
 namespace hawk { class RecordParser; }
+namespace hawk { class Projection; }
 
 namespace hawk {
 
@@ -36,6 +37,8 @@ public:
     }
 
     std::string_view get(ColumnIndex idx) const;
+
+    std::string_view get_projected(const Projection* projection, ColumnIndex idx) const;
 
 private:
     RecordIndex index_;

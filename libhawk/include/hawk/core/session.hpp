@@ -6,6 +6,7 @@
 #include <hawk/core/record_parser.hpp>
 #include <hawk/core/schema.hpp>
 #include <hawk/core/view.hpp>
+#include <hawk/core/projection.hpp>
 #include <hawk/core/commands.hpp>
 #include <hawk/core/results.hpp>
 
@@ -67,6 +68,7 @@ private:
     CommandResult execute_impl(const HeadCommand&);
     CommandResult execute_impl(const TailCommand&);
     CommandResult execute_impl(const FilterCommand&);
+    CommandResult execute_impl(const SelectCommand&);
     CommandResult execute_impl(const ExportCommand&);
 
 private:
@@ -75,6 +77,7 @@ private:
     std::unique_ptr<RecordParser> parser_;
     Schema schema_;
     View current_view_;
+    Projection current_projection_;
 };
 
 } // namespace hawk

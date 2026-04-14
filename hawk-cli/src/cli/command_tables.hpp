@@ -11,7 +11,7 @@
 
 namespace hawk::cli {
 
-inline const std::array<LibCommandInfo, 7> lib_command_table{{
+inline const std::array<LibCommandInfo, 8> lib_command_table{{
     {
         "columns",
         "columns",
@@ -58,6 +58,14 @@ inline const std::array<LibCommandInfo, 7> lib_command_table{{
         "Filter rows based on a condition",
         [](std::string_view args) -> LibCommand {
             return parsers::filter(args);
+        }
+    },
+    {
+        "select",
+        "select <column_1>,..,<column_n>",
+        "Selects columns to show",
+        [](std::string_view args) -> LibCommand {
+            return parsers::select(args);
         }
     },
     {

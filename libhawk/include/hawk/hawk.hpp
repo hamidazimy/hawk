@@ -6,6 +6,7 @@
 #include <hawk/core/schema.hpp>
 #include <hawk/core/row.hpp>
 #include <hawk/core/view.hpp>
+#include <hawk/core/projection.hpp>
 #include <hawk/core/filter.hpp>
 #include <hawk/core/commands.hpp>
 #include <hawk/core/results.hpp>

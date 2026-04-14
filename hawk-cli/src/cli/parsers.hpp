@@ -17,6 +17,7 @@ PeekCommand peek(std::string_view);
 HeadCommand head(std::string_view);
 TailCommand tail(std::string_view);
 FilterCommand filter(std::string_view);
+SelectCommand select(std::string_view);
 ExportCommand eXport(std::string_view);
 
 // Cli command parsers
