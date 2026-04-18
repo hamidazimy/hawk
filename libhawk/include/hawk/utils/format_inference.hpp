@@ -1,8 +1,11 @@
 #ifndef HAWK_FORMAT_INFERER_HPP
 #define HAWK_FORMAT_INFERER_HPP
 
+#include <hawk/core/types.hpp>
+
 #include <cstddef>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace hawk { class RecordSource; }
@@ -11,9 +14,27 @@ namespace hawk::inference {
 
 namespace detectors {
 
-char detect_delimiter(const std::vector<std::string>& sample_lines);
-bool looks_like_header(const std::string& line);
-std::size_t detect_column_count(const std::vector<std::string>& sample_lines, char delimiter);
+bool detect_delimiter(
+    const std::vector<std::string_view>& samples,
+    char& out_delimiter
+);
+
+bool detect_quotes(
+    const std::vector<std::string_view>& samples,
+    char& out_quote_char
+);
+
+bool detect_column_count(
+    const std::vector<std::string_view>& samples,
+    char delimiter,
+    ColumnCount& out_column_count
+);
+
+bool detect_header(
+    const std::vector<std::string_view>& samples,
+    char delimiter,
+    bool& out_has_header
+);
 
 } // namespace detectors
 
@@ -32,7 +53,7 @@ struct FormatInferenceResult {
     char quote_char = '"';
 
     // Diagnostic / transparency
-    std::vector<std::string> notes;              // human-readable explanations
+    std::vector<std::string> notes; // human-readable explanations
 };
 
 class FormatInferer {
@@ -48,8 +69,6 @@ public:
         : options_(options) {}
 
     FormatInferenceResult infer(const RecordSource& source) const;
-
-    FormatInferenceResult infer_from_file(const std::string& path) const;
 
 private:
     Options options_;

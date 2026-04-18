@@ -18,6 +18,8 @@ using ColumnCount = std::size_t;
 
 using ColumnIndex = std::size_t;
 
+using DateTimeTicks = std::uint64_t;
+
 } // namespace hawk
 
 #endif // HAWK_TYPES_HPP

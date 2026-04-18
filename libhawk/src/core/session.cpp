@@ -2,95 +2,41 @@
 
 #include <hawk/core/types.hpp>
 #include <hawk/core/record_source.hpp>
-#include <hawk/core/record_parser.hpp>
+#include <hawk/core/session_config.hpp>
 #include <hawk/core/schema.hpp>
 #include <hawk/core/row.hpp>
 #include <hawk/core/view.hpp>
+#include <hawk/core/column.hpp>
 #include <hawk/core/projection.hpp>
 #include <hawk/core/filter.hpp>
 #include <hawk/core/commands.hpp>
 #include <hawk/core/results.hpp>
-#include <hawk/utils/format_inference.hpp>
 
 #include <algorithm>
-#include <cstdlib>
-#include <stdexcept>
+#include <optional>
+#include <string>
 #include <string_view>
 #include <utility>
 #include <variant>
 #include <vector>
 
+namespace hawk { class RecordParser; }
+
 namespace hawk {
-
-//  ---- SessionConfig ----
-
-bool SessionConfig::empty() const noexcept {
-    return !delimiter.has_value()
-        && !has_header.has_value();
-}
-
-bool SessionConfig::complete() const noexcept {
-    return delimiter.has_value()
-        && has_header.has_value();
-}
-
-void SessionConfig::resolve_with_inference(const inference::FormatInferenceResult& inference_result) {
-    if (!delimiter.has_value() && inference_result.delimiter != '\0') {
-        delimiter = inference_result.delimiter;
-    }
-
-    if (!has_header.has_value()) {
-        has_header = inference_result.has_header;
-    }
-}
-
-// ---- Session ----
-
-std::unique_ptr<Session> Session::create_from_file(const std::string& filepath, const SessionConfig& config) {
-    auto source = std::make_unique<CSVRecordSource>(filepath);
-    auto session = std::unique_ptr<Session>(
-        new Session(config, std::move(source))
-    );
-    return session;
-}
 
 Session::Session(
     const SessionConfig& config,
-    std::unique_ptr<RecordSource> source
+    std::unique_ptr<RecordSource> source,
+    std::unique_ptr<RecordParser> parser,
+    Schema schema
 )
     : config_(config)
     , source_(std::move(source))
+    , parser_(std::move(parser))
+    , schema_(std::move(schema))
 {
-    if (!config_.complete()) {
-        throw std::logic_error(
-            "SessionConfig must be complete before creating a Session"
-        );
-    }
-
-    parser_ = std::make_unique<CSVRecordParser>(config_.delimiter.value());
-
-    auto parsed_first_record = parser_->parse_record(source_->get_record(0));
-    std::size_t column_count = parsed_first_record.size();
-
-    std::vector<std::string> column_names;
-
-    if (config_.has_header.value()) {
-        for (std::size_t i = 0; i < column_count; ++i) {
-            column_names.push_back(std::string(parsed_first_record.at(i)));
-        }
-    } else {
-        // Generate default column names??
-        for (std::size_t i = 0; i < column_count; ++i) {
-            // column_names.push_back("$col" + std::to_string(i + 1));
-            column_names.push_back("");
-        }
-    }
-
-    schema_ = Schema(column_count);
-    schema_.set_column_names(column_names);
-
     current_view_ = View::identity(row_count());
-    current_projection_ = Projection(column_count);
+    current_projection_ = Projection(schema_.column_count());
 }
 
 Row Session::make_row_from_view(RecordIndex view_index) const {
@@ -122,14 +68,19 @@ CommandResult Session::execute_impl(const ExportCommand&) {
     }
 
     std::string_view header = {};
-    if (config_.has_header.value()) {
+    if (config_.has_header) {
         header = source_->get_record(0);
     }
     return ExportResult{header, std::move(rows)};
 }
 
 CommandResult Session::execute_impl(const ColumnsCommand&) {
-    return ColumnsResult{schema_.column_names()};
+    std::vector<std::string> column_names;
+    column_names.reserve(schema_.column_count());
+    for (ColumnIndex i = 0; i < schema_.column_count(); ++i) {
+        column_names.push_back(schema_.column(i).name);
+    }
+    return ColumnsResult{std::move(column_names)};
 }
 
 CommandResult Session::execute_impl(const CountCommand&) {

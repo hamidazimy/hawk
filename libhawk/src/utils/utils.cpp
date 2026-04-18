@@ -2,6 +2,7 @@
 #include <cctype>
 #include <cstddef>
 #include <iomanip>
+#include <iterator>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -33,6 +34,21 @@ std::string trim(const std::string& str) {
     return (start < end) ? std::string(start, end) : std::string();
 }
 
+std::string_view trim(std::string_view str) {
+    auto is_space = [](unsigned char ch) {
+        return std::isspace(ch);
+    };
+
+    auto start = std::find_if_not(str.begin(), str.end(), is_space);
+    auto end = std::find_if_not(str.rbegin(), str.rend(), is_space).base();
+
+    if (start >= end) {
+        return std::string_view{};
+    }
+
+    return std::string_view(start, static_cast<size_t>(end - start));
+}
+
 std::vector<std::string> split(const std::string& str, char delimiter) {
     std::vector<std::string> tokens;
     std::string token;
@@ -45,7 +61,7 @@ std::vector<std::string> split(const std::string& str, char delimiter) {
     return tokens;
 }
 
-std::vector<std::string_view> split_view(std::string_view str, char delimiter) {
+std::vector<std::string_view> split(std::string_view str, char delimiter) {
     std::vector<std::string_view> tokens;
     std::size_t start = 0;
     std::size_t end = str.find(delimiter);

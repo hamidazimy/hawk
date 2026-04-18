@@ -8,51 +8,24 @@
 #include <iostream>
 #include <optional>
 #include <stdlib.h>
+#include <string>
+#include <vector>
 
 namespace hawk::cli {
 
-SessionConfig config_from_args(const Args& args) {
-    SessionConfig config;
-
-    if (args.delimiter.has_value()) {
-        config.delimiter = args.delimiter.value();
-    }
-
-    if (args.has_header.has_value()) {
-        config.has_header = args.has_header.value();
-    }
-
-    return config;
+static std::string format_delimiter(char delim) {
+    if (delim == '\t') return "\\t (tab)";
+    if (delim == ' ')  return "(space)";
+    return std::string("'") + delim + "'";
 }
 
-void display_config(const SessionConfig& config) {
+static void display_config(const SessionConfig& config) {
     std::cout << "Current configuration:\n";
-
-    std::cout << "  Delimiter:    ";
-    if (config.delimiter.has_value()) {
-        char delim = config.delimiter.value();
-        if (delim == '\t') {
-            std::cout << "\\t (tab)";
-        } else if (delim == ' ') {
-            std::cout << "(space)";
-        } else {
-            std::cout << "'" << delim << "'";
-        }
-    } else {
-        std::cout << "(not set)";
-    }
-    std::cout << "\n";
-
-    std::cout << "  Header:       ";
-    if (config.has_header.has_value()) {
-        std::cout << (config.has_header.value() ? "Yes" : "No");
-    } else {
-        std::cout << "(not set)";
-    }
-    std::cout << "\n\n";
+    std::cout << "  Delimiter: " << format_delimiter(config.delimiter) << "\n";
+    std::cout << "  Header:    " << (config.has_header ? "Yes" : "No") << "\n\n";
 }
 
-void modify_config_interactively(SessionConfig& config) {
+static void modify_config_interactively(SessionConfig& config) {
     while (true) {
         std::cout << "What would you like to modify?\n";
         std::cout << "  [d] Delimiter\n";
@@ -72,17 +45,7 @@ void modify_config_interactively(SessionConfig& config) {
         } else if (choice == "x" || choice == "X") {
             return;
         } else if (choice == "d" || choice == "D") {
-            // Modify delimiter
-            std::cout << "Current delimiter: ";
-            if (!config.delimiter.has_value()) {
-                std::cout << "None";
-            } else if (config.delimiter == '\t') {
-                std::cout << "\\t (tab)";
-            } else {
-                std::cout << "'" << config.delimiter.value_or(' ') << "'";
-            }
-            std::cout << "\n";
-
+            std::cout << "Current delimiter: " << format_delimiter(config.delimiter) << "\n";
             std::cout << "New delimiter (or Enter to keep): ";
             std::string delim_input;
             std::getline(std::cin, delim_input);
@@ -98,7 +61,7 @@ void modify_config_interactively(SessionConfig& config) {
             }
         } else if (choice == "h" || choice == "H") {
             // Modify header
-            std::cout << "Current header setting: " << (config.has_header.has_value() ? (config.has_header ? "Yes" : "No") : "Unkown") << "\n";
+            std::cout << "Current header setting: " << (config.has_header ? "Yes" : "No") << "\n";
             std::cout << "Has header? [y/n]: ";
 
             std::string header_input;
@@ -125,35 +88,46 @@ void modify_config_interactively(SessionConfig& config) {
     }
 }
 
-SessionConfig complete_config(
-    SessionConfig config,
-    const std::string& filepath,
-    bool no_confirm
+static SessionConfig merge_config(
+    const Args& args,
+    const inference::FormatInferenceResult& inference
 ) {
-    // If config is already complete, nothing to do
-    if (config.complete()) {
+    SessionConfig config;
+    config.delimiter  = args.delimiter.value_or(inference.delimiter);
+    config.has_header = args.has_header.value_or(inference.has_header);
+    return config;
+}
+
+SessionConfig build_config(const Args& args, const RecordSource& source) {
+    // If args are fully explicit, skip inference entirely
+    if (args.delimiter.has_value() && args.has_header.has_value()) {
+        SessionConfig config;
+        config.delimiter  = args.delimiter.value();
+        config.has_header = args.has_header.value();
         return config;
     }
 
-    // Run inference
+    // Run inference against real data
     std::cout << "Analyzing file...\n";
-
     inference::FormatInferer inferer;
-    auto inference_result = inferer.infer_from_file(filepath);
+    auto inference_result = inferer.infer(source);
 
-    // Apply inference to fill missing fields
-    config.resolve_with_inference(inference_result);
+    // Print inference notes for transparency
+    for (const auto& note : inference_result.notes)
+        std::cout << "  " << note << "\n";
+    std::cout << "\n";
 
-    // Display current configuration
+    // Merge: args override inference where specified
+    SessionConfig config = merge_config(args, inference_result);
+
     display_config(config);
 
-    // If no confirmation needed, return immediately
-    if (no_confirm) {
+    if (args.no_confirm) {
         std::cout << "Auto-accepting configuration (--no-confirm)\n\n";
         return config;
     }
 
-    // Interactive confirmation
+    // Interactive confirmation loop
     while (true) {
         std::cout << "Accept this configuration? [Y/n]: ";
         std::string confirm;
@@ -168,14 +142,26 @@ SessionConfig complete_config(
     }
 }
 
-SessionConfig build_config(const Args& args) {
-    auto partial_config = hawk::cli::config_from_args(args);
-    auto final_config = hawk::cli::complete_config(
-        partial_config,
-        args.log_file,
-        args.no_confirm
-    );
-    return final_config;
+void confirm_schema(Session& session, const Args& args) {
+    const auto& schema = session.schema();
+    std::cout << "Inferred column types:\n";
+    for (ColumnIndex i = 0; i < schema.column_count(); ++i) {
+        const auto& col = schema.column(i);
+        std::cout << "  [" << (i + 1) << "] "
+                  << (col.name.empty() ? "$col" + std::to_string(i + 1) : col.name)
+                  << " — " << column_type_name(col.type);
+        if (col.nullable)
+            std::cout << " (nullable)";
+        if (col.datetime_format.has_value())
+            std::cout << " [" << datetime_format_name(*col.datetime_format) << "]";
+        std::cout << "\n";
+    }
+    std::cout << "\n";
+
+    if (args.no_confirm)
+        return;
+
+    // TODO: Implement interactive override loop here
 }
 
 } // namespace hawk::cli

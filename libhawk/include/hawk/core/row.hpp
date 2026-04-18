@@ -44,7 +44,8 @@ private:
     RecordIndex index_;
     std::string_view record_;
     mutable std::optional<std::vector<std::string_view>> fields_;
-    const RecordParser* parser_;
+    const RecordParser* parser_; // Non-owning pointer to the parser used to parse the record into fields.
+                                 // Row must not outlive the Session that owns the parser.
 };
 
 } // namespace hawk

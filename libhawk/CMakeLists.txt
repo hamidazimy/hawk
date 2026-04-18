@@ -13,6 +13,7 @@ else()
 endif()
 
 add_library(hawk STATIC
+    src/core/session_builder.cpp
     src/core/session.cpp
     src/core/log_file.cpp
     src/core/record_source.cpp
@@ -24,6 +25,7 @@ add_library(hawk STATIC
     ${PLATFORM_SOURCES}
 
     src/utils/format_inference.cpp
+    src/utils/type_inference.cpp
     src/utils/utils.cpp
 )
 

@@ -19,6 +19,11 @@ std::string human_size(std::size_t bytes);
 std::string trim(const std::string& str);
 
 /**
+ * Trim whitespace from both ends of a string_view
+ */
+std::string_view trim(std::string_view str);
+
+/**
  * Split string by delimiter
  */
 std::vector<std::string> split(const std::string& str, char delimiter);
@@ -26,7 +31,7 @@ std::vector<std::string> split(const std::string& str, char delimiter);
 /**
  * Split string by delimiter (string_view version for performance)
  */
-std::vector<std::string_view> split_view(std::string_view str, char delimiter);
+std::vector<std::string_view> split(std::string_view str, char delimiter);
 
 /**
  * Check if string ends with suffix

@@ -1,16 +1,13 @@
 #include <hawk/core/schema.hpp>
 
 #include <hawk/core/types.hpp>
+#include <hawk/core/column.hpp>
 
 #include <exception>
 #include <optional>
 #include <string>
 
 namespace hawk {
-
-void Schema::set_column_names(const std::vector<std::string>& names) {
-    column_names_ = names;
-}
 
 std::optional<ColumnIndex> Schema::find_column(const std::string& name) const {
     if (name.empty()) {
@@ -21,15 +18,15 @@ std::optional<ColumnIndex> Schema::find_column(const std::string& name) const {
         try {
             ColumnIndex index = std::stoul(name.substr(4));
             // column indices are 1-based in the default naming scheme, so we check if index is between 1 and column_count_
-            if (index >= 1 && index <= column_count_) {
+            if (index >= 1 && index <= columns_.size()) {
                 return index - 1; // Convert to 0-based index
             }
         } catch (const std::exception&) {
             return std::nullopt; // Invalid format
         }
     }
-    for (ColumnIndex i = 0; i < column_names_.size(); ++i) {
-        if (column_names_[i] == name) {
+    for (ColumnIndex i = 0; i < columns_.size(); ++i) {
+        if (columns_[i].name == name) {
             return i;
         }
     }

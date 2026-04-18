@@ -2,6 +2,7 @@
 #define HAWK_SESSION_HPP
 
 #include <hawk/core/types.hpp>
+#include <hawk/core/session_config.hpp>
 #include <hawk/core/record_source.hpp>
 #include <hawk/core/record_parser.hpp>
 #include <hawk/core/schema.hpp>
@@ -11,31 +12,15 @@
 #include <hawk/core/results.hpp>
 
 #include <memory>
-#include <optional>
-#include <string>
 
 namespace hawk { class Row; }
-namespace hawk { namespace inference { struct FormatInferenceResult; } }
 
 namespace hawk {
 
-struct SessionConfig {
-    std::optional<char> delimiter;
-    std::optional<bool> has_header;
-
-    bool empty() const noexcept;
-    bool complete() const noexcept;
-
-    void resolve_with_inference(const inference::FormatInferenceResult& inference_result);
-};
-
 class Session {
-public:
-    static std::unique_ptr<Session> create_from_file(
-        const std::string& path,
-        const SessionConfig& config
-    );
+    friend class SessionBuilder;
 
+public:
     const SessionConfig& config() const noexcept { return config_; }
     const RecordSource& source() const noexcept { return *source_; }
     const Schema& schema() const noexcept { return schema_; }
@@ -46,15 +31,17 @@ public:
 private:
     Session(
         const SessionConfig& config,
-        std::unique_ptr<RecordSource> source
+        std::unique_ptr<RecordSource> source,
+        std::unique_ptr<RecordParser> parser,
+        Schema schema
     );
 
     RecordIndex to_source_index(RecordIndex file_index) const noexcept {
-        return file_index + config_.has_header.value();
+        return file_index + static_cast<RecordIndex>(config_.has_header);
     }
 
     RecordCount row_count() const noexcept {
-        return source_->record_count() - config_.has_header.value();
+        return source_->record_count() - static_cast<RecordCount>(config_.has_header);
     }
 
     RecordCount visible_row_count() const noexcept { return current_view_.size(); }

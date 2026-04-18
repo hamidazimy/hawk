@@ -47,14 +47,24 @@ int main(int argc, char* argv[]) {
 
     try {
         // -------------------------------------------------------------
+        // Create session builder
+        // -------------------------------------------------------------
+        auto session_builder = hawk::SessionBuilder::open(args.log_file);
+
+        // -------------------------------------------------------------
         // Build configuration
         // -------------------------------------------------------------
-        auto config = hawk::cli::build_config(args);
+        auto config = hawk::cli::build_config(args, session_builder.record_source());
 
         // -------------------------------------------------------------
         // Create session
         // -------------------------------------------------------------
-        auto session = hawk::Session::create_from_file(args.log_file, config);
+        auto session = session_builder.build(config);
+
+        // -------------------------------------------------------------
+        // Confirm schema
+        // -------------------------------------------------------------
+        // hawk::cli::confirm_schema(*session, args); // TODO: Implement schema confirmation.
 
         // -------------------------------------------------------------
         // Enter interactive mode

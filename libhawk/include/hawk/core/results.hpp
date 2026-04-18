@@ -16,7 +16,8 @@ namespace hawk {
 
 struct RowsResult {
     std::vector<Row> rows;
-    const Projection* projection;
+    const Projection* projection; // Non-owning pointer to the projection used to project the rows.
+                                  // RowsResult must not outlive the Session that owns the projection.
 };
 
 struct CountResult {

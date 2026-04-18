@@ -1,31 +1,32 @@
 #ifndef HAWK_SCHEMA_HPP
 #define HAWK_SCHEMA_HPP
 
-#include <cstddef>
+#include <hawk/core/types.hpp>
+#include <hawk/core/column.hpp>
+
 #include <optional>
 #include <string>
 #include <vector>
+#include <utility>
 
 namespace hawk {
 
 class Schema {
 public:
     Schema() = default;
-    Schema(std::size_t column_count)
-        : column_count_(column_count) {}
+    explicit Schema(std::vector<ColumnSchema> columns)
+        : columns_(std::move(columns)) {}
 
-    std::size_t column_count() const { return column_count_; }
+    ColumnCount column_count() const { return columns_.size(); }
 
-    const std::vector<std::string>& column_names() const { return column_names_; }
+    const ColumnSchema& column(ColumnIndex index) const { return columns_[index]; }
+    ColumnType column_type(ColumnIndex index) const { return columns_[index].type; }
+    bool is_nullable(ColumnIndex index) const { return columns_[index].nullable; }
 
-    void set_column_names(const std::vector<std::string>& names);
-
-    std::optional<std::size_t> find_column(const std::string& name) const;
+    std::optional<ColumnIndex> find_column(const std::string& name) const;
 
 private:
-    std::size_t column_count_;
-    std::vector<std::string> column_names_;
-    char delimiter_ = ',';
+    std::vector<ColumnSchema> columns_;
 };
 
 } // namespace hawk

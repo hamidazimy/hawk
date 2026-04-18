@@ -5,23 +5,11 @@
 
 #include <hawk/hawk.hpp>
 
-#include <string>
-
 namespace hawk::cli {
 
-SessionConfig config_from_args(const Args& args);
+SessionConfig build_config(const Args& args, const RecordSource& source);
 
-void display_config(const SessionConfig& config);
-
-void modify_config_interactively(SessionConfig& current);
-
-SessionConfig complete_partial_config(
-    SessionConfig partial,
-    const std::string& filepath,
-    bool no_confirm
-);
-
-SessionConfig build_config(const Args& args);
+void confirm_schema(Session& session, const Args& args);
 
 } // namespace hawk::cli
 
