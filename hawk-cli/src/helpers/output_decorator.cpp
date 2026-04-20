@@ -8,7 +8,11 @@ namespace hawk::cli {
 namespace sgr {
 
 std::string sgr(const std::string& code) {
+#ifdef _WIN32
+    return "";
+#else
     return "\x1b[" + code + "m";
+#endif
 }
 
 std::string rgb(const std::string& rgb_code) {
