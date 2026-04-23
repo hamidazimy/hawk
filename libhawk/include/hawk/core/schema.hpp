@@ -18,12 +18,18 @@ public:
         : columns_(std::move(columns)) {}
 
     ColumnCount column_count() const { return columns_.size(); }
+    std::vector<ColumnSchema> columns() const { return columns_; }
 
     const ColumnSchema& column(ColumnIndex index) const { return columns_[index]; }
     ColumnType column_type(ColumnIndex index) const { return columns_[index].type; }
     bool is_nullable(ColumnIndex index) const { return columns_[index].nullable; }
 
     std::optional<ColumnIndex> find_column(const std::string& name) const;
+
+    // Sets the type of a column by index.
+    // Does not invalidate any existing views — callers are responsible for
+    // understanding that derived views were built under the previous type.
+    void set_column_type(ColumnIndex index, ColumnType type);
 
 private:
     std::vector<ColumnSchema> columns_;

@@ -2,14 +2,12 @@
 #define HAWK_FILTER_HPP
 
 #include <hawk/core/types.hpp>
-#include <hawk/core/row.hpp>
 
-#include <charconv>
-#include <optional>
 #include <string>
 #include <string_view>
-#include <system_error>
-#include <utility>
+
+namespace hawk { class Row; }
+namespace hawk { enum class ColumnType; }
 
 namespace hawk {
 
@@ -23,70 +21,20 @@ enum class FilterOp {
 };
 
 struct FilterPredicate {
-    RecordIndex column_index;
+    ColumnIndex column_index;
+    ColumnType  column_type;
     FilterOp op;
-
     std::string rhs_str;
-    std::optional<double> rhs_num;
+    double rhs_num = 0.0;       // valid when column_type == Integer or Float
+    RecordCount skipped = 0;    // rows where the field could not be parsed
 
-    FilterPredicate(RecordIndex col, FilterOp op, std::string value)
-        : column_index(col)
-        , op(op)
-        , rhs_str(std::move(value))
-    {
-        double tmp;
-        if (try_parse_double(rhs_str, tmp)) {
-            rhs_num = tmp;
-        }
-    }
+    FilterPredicate(ColumnIndex col, ColumnType type, FilterOp op, std::string rhs);
 
-    bool operator()(const Row& row) const {
-        auto lhs = row.get(column_index);
-
-        // Try numeric path if RHS is numeric
-        if (rhs_num.has_value()) {
-            double lhs_num;
-            if (try_parse_double(lhs, lhs_num)) {
-                return compare_numeric(lhs_num, *rhs_num);
-            }
-        }
-
-        // Fallback to string comparison
-        return compare_string(lhs, rhs_str);
-    }
+    bool operator()(const Row& row);
 
 private:
-    static bool try_parse_double(std::string_view s, double& out) {
-        const char* begin = s.data();
-        const char* end   = s.data() + s.size();
-
-        auto result = std::from_chars(begin, end, out);
-        return result.ec == std::errc{} && result.ptr == end;
-    }
-
-    bool compare_numeric(double lhs, double rhs) const {
-        switch (op) {
-            case FilterOp::EQ: return lhs == rhs;
-            case FilterOp::NE: return lhs != rhs;
-            case FilterOp::GT: return lhs >  rhs;
-            case FilterOp::LT: return lhs <  rhs;
-            case FilterOp::GE: return lhs >= rhs;
-            case FilterOp::LE: return lhs <= rhs;
-        }
-        return false;
-    }
-
-    bool compare_string(std::string_view lhs, std::string_view rhs) const {
-        switch (op) {
-            case FilterOp::EQ: return lhs == rhs;
-            case FilterOp::NE: return lhs != rhs;
-            case FilterOp::GT: return lhs >  rhs;
-            case FilterOp::LT: return lhs <  rhs;
-            case FilterOp::GE: return lhs >= rhs;
-            case FilterOp::LE: return lhs <= rhs;
-        }
-        return false;
-    }
+    bool compare_numeric(double lhs, double rhs) const;
+    bool compare_string(std::string_view lhs, std::string_view rhs) const;
 };
 
 } // namespace hawk

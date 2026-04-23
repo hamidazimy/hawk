@@ -15,9 +15,43 @@ ColumnsCommand columns(std::string_view) {
     return ColumnsCommand{};
 }
 
+SetColumnTypeCommand set_column_type(std::string_view args) {
+    auto parts = utils::split(std::string(args), ' ');
+    if (parts.size() != 2) {
+        throw std::invalid_argument{
+            "Invalid arguments for set command: " + std::string(args)
+        };
+    }
+    auto column = parts[0];
+    auto type_str = parts[1];
+    ColumnType type;
+    if (type_str == "string") {
+        type = ColumnType::String;
+    } else if (type_str == "integer" || type_str == "int") {
+        type = ColumnType::Integer;
+    } else if (type_str == "float" || type_str == "double") {
+        type = ColumnType::Float;
+    } else if (type_str == "datetime") {
+        throw std::invalid_argument{
+            "Cannot set column type to datetime: DateTime filtering is not yet supported"
+        };
+    } else {
+        throw std::invalid_argument{
+            "Invalid column type in set command: " + type_str
+        };
+    }
+    return SetColumnTypeCommand{column, type};
+}
+
+SelectCommand select(std::string_view args) {
+    auto parts = utils::split(std::string(args), ' ');
+    auto cols = utils::split(parts[0], ',');
+    return SelectCommand{std::move(cols)};
+}
+
 CountCommand count(std::string_view args) {
     if (!args.empty()) {
-        throw std::invalid_argument("Invalid operator in count command: " + std::string(args));
+        throw std::invalid_argument("Invalid arguments in count command: " + std::string(args));
     }
     return CountCommand{};
 }
@@ -83,10 +117,11 @@ FilterCommand filter(std::string_view args) {
     return FilterCommand{parts[0], op, parts[2]};
 }
 
-SelectCommand select(std::string_view args) {
-    auto parts = utils::split(std::string(args), ' ');
-    auto cols = utils::split(parts[0], ',');
-    return SelectCommand{std::move(cols)};
+ResetViewCommand reset(std::string_view args) {
+    if (!args.empty()) {
+        throw std::invalid_argument("Invalid arguments in reset command: " + std::string(args));
+    }
+    return ResetViewCommand{};
 }
 
 ExportCommand eXport(std::string_view args) {

@@ -17,11 +17,13 @@ std::string colorize(const std::string& output, const std::string& color);
 
 } // namespace sgr
 
-std::string info_log(std::string log_line);
+std::string log_info(std::string log_line);
 
-std::string error_log(std::string log_line);
+std::string log_error(std::string log_line);
 
-std::string warning_log(std::string log_line);
+std::string log_warning(std::string log_line);
+
+std::string log_success(std::string log_line);
 
 } // namespace hawk::cli
 

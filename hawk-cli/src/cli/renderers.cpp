@@ -123,16 +123,39 @@ void render_impl(const hawk::CountResult& res,
                  const hawk::Schema&,
                  std::ostream& sout)
 {
-    sout << "Count: " << res.count << "\n";
+    sout << cli::log_info("Count: " + std::to_string(res.count)) << std::endl;
 }
 
 void render_impl(const hawk::ColumnsResult& res,
                  const hawk::Schema&,
                  std::ostream& sout)
 {
-    std::size_t column_count = res.columns.size();
-    for (std::size_t i = 0; i < column_count; ++i) {
-        sout << std::setw(8) << std::left << "$col" + std::to_string(i + 1) << res.columns.at(i) << std::endl;
+    std::size_t max_name_length = 0;
+    for (const auto& col : res.columns)
+        max_name_length = std::max(max_name_length, col.name.size());
+    for (std::size_t i = 0; i < res.columns.size(); ++i) {
+        const auto& col = res.columns.at(i);
+        sout << std::setw(8) << std::left << "$col" + std::to_string(i + 1);
+        sout << std::setw(max_name_length + 2) << std::left << col.name;
+        sout << "(" << hawk::column_type_name(col.type);
+        if (col.nullable) {
+            sout << ", nullable";
+        }
+        sout << ")";
+        sout << std::endl;
+    }
+}
+
+void render_impl(const hawk::FilterResult& res,
+                 const hawk::Schema&,
+                 std::ostream& sout)
+{
+    sout << cli::log_success("Matched: " + std::to_string(res.matched)) << std::endl;
+    if (res.skipped > 0) {
+        sout << cli::log_success("Skipped: " + std::to_string(res.skipped)) << std::endl;
+        if (!res.warning.empty()) {
+            sout << cli::log_warning("Warning: " + res.warning) << std::endl;
+        }
     }
 }
 
@@ -148,11 +171,11 @@ void render_impl(const hawk::ExportResult& res,
     }
 }
 
-void render_impl(const hawk::SuccessResult& res,
+void render_impl(const hawk::SuccessResult&,
                  const hawk::Schema&,
                  std::ostream& sout)
 {
-    sout << "Command executed successfully in " << res.execution_time_ms << " ms.\n";
+    sout << hawk::cli::log_success("✔ Done.") << std::endl;
 }
 
 void render_impl(const hawk::ErrorResult& res,
@@ -178,7 +201,7 @@ void render_result(
 }
 
 void render_error(const std::string& message, std::ostream& sout) {
-    sout << hawk::cli::error_log("Error: " + message) << "\n";
+    sout << hawk::cli::log_error("✘ Error: " + message) << std::endl;
 }
 
 } // namespace renderers

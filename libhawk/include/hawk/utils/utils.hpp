@@ -48,6 +48,12 @@ bool iequals(std::string_view a, std::string_view b);
  */
 std::string to_lower(std::string str);
 
+/**
+ * Parse a string as a double.
+ * Returns true if parsing succeeded and consumed the entire string, false otherwise.
+ */
+bool parse_double(std::string_view s, double& out);
+
 } // namespace hawk::utils
 
 #endif // HAWK_UTILS_HPP

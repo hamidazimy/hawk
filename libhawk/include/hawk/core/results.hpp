@@ -3,6 +3,7 @@
 
 #include <hawk/core/types.hpp>
 #include <hawk/core/row.hpp>
+#include <hawk/core/column.hpp>
 
 #include <optional>
 #include <string>
@@ -24,8 +25,14 @@ struct CountResult {
     RecordCount count;
 };
 
+struct FilterResult {
+    RecordCount matched;
+    RecordCount skipped;   // 0 if clean
+    std::string warning;   // empty if skipped == 0
+};
+
 struct ColumnsResult {
-    std::vector<std::string> columns;
+    std::vector<ColumnSchema> columns;
 };
 
 struct ExportResult {
@@ -34,7 +41,6 @@ struct ExportResult {
 };
 
 struct SuccessResult {
-    long int execution_time_ms;
 };
 
 struct ErrorResult {
@@ -44,6 +50,7 @@ struct ErrorResult {
 using CommandResult = std::variant<
     RowsResult,
     CountResult,
+    FilterResult,
     ColumnsResult,
     ExportResult,
     SuccessResult,

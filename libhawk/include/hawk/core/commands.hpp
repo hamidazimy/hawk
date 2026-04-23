@@ -8,11 +8,24 @@
 #include <variant>
 #include <vector>
 
+namespace hawk { enum class ColumnType; }
 namespace hawk { enum class FilterOp; }
 
 namespace hawk {
 
 struct ColumnsCommand {
+};
+
+struct SetColumnTypeCommand {
+    std::string column;
+    ColumnType type;
+
+    SetColumnTypeCommand(std::string column, ColumnType type)
+        : column(std::move(column)), type(type) {}
+};
+
+struct SelectCommand {
+    std::vector<std::string> columns;
 };
 
 struct CountCommand {
@@ -40,8 +53,7 @@ struct FilterCommand {
         : column(std::move(column)), op(op), value(std::move(value)) {}
 };
 
-struct SelectCommand {
-    std::vector<std::string> columns;
+struct ResetViewCommand {
 };
 
 struct ExportCommand {
@@ -52,12 +64,14 @@ struct ExportCommand {
 
 using LibCommand = std::variant<
     ColumnsCommand,
+    SetColumnTypeCommand,
+    SelectCommand,
     CountCommand,
     PeekCommand,
     HeadCommand,
     TailCommand,
     FilterCommand,
-    SelectCommand,
+    ResetViewCommand,
     ExportCommand
 >;
 

@@ -1,11 +1,13 @@
 #include <algorithm>
 #include <cctype>
 #include <cstddef>
+#include <charconv>
 #include <iomanip>
 #include <iterator>
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <system_error>
 #include <vector>
 
 namespace hawk::utils {
@@ -93,6 +95,14 @@ std::string to_lower(std::string str) {
     std::transform(str.begin(), str.end(), str.begin(),
                    [](unsigned char c) { return std::tolower(c); });
     return str;
+}
+
+bool parse_double(std::string_view s, double& out) {
+    const char* begin = s.data();
+    const char* end   = s.data() + s.size();
+
+    auto result = std::from_chars(begin, end, out);
+    return result.ec == std::errc{} && result.ptr == end;
 }
 
 } // namespace hawk::utils

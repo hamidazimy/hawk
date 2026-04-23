@@ -51,11 +51,13 @@ private:
 
     CommandResult execute_impl(const ColumnsCommand&);
     CommandResult execute_impl(const CountCommand&);
+    CommandResult execute_impl(const SetColumnTypeCommand&);
+    CommandResult execute_impl(const SelectCommand&);
     CommandResult execute_impl(const PeekCommand&);
     CommandResult execute_impl(const HeadCommand&);
     CommandResult execute_impl(const TailCommand&);
     CommandResult execute_impl(const FilterCommand&);
-    CommandResult execute_impl(const SelectCommand&);
+    CommandResult execute_impl(const ResetViewCommand&);
     CommandResult execute_impl(const ExportCommand&);
 
 private:

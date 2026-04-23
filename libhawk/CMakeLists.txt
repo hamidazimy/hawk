@@ -21,6 +21,7 @@ add_library(hawk STATIC
     src/core/schema.cpp
     src/core/row.cpp
     src/core/view.cpp
+    src/core/filter.cpp
 
     ${PLATFORM_SOURCES}
 

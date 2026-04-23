@@ -11,6 +11,7 @@
 #include <hawk/core/filter.hpp>
 #include <hawk/core/commands.hpp>
 #include <hawk/core/results.hpp>
+#include <hawk/utils/utils.hpp>
 
 #include <algorithm>
 #include <optional>
@@ -75,12 +76,41 @@ CommandResult Session::execute_impl(const ExportCommand&) {
 }
 
 CommandResult Session::execute_impl(const ColumnsCommand&) {
-    std::vector<std::string> column_names;
-    column_names.reserve(schema_.column_count());
-    for (ColumnIndex i = 0; i < schema_.column_count(); ++i) {
-        column_names.push_back(schema_.column(i).name);
+    return ColumnsResult{std::move(schema_.columns())};
+}
+
+CommandResult Session::execute_impl(const SetColumnTypeCommand& cmd) {
+    auto column_index = schema_.find_column(cmd.column);
+    if (!column_index) {
+        return ErrorResult{"Unknown column: " + cmd.column};
     }
-    return ColumnsResult{std::move(column_names)};
+
+    // DateTime is rejected until tick parsing is implemented.
+    if (cmd.type == ColumnType::DateTime) {
+        return ErrorResult{
+            "Cannot set column type to datetime: DateTime filtering is not yet supported"
+        };
+    }
+
+    // NOTE: This does not invalidate the current view. Any existing filtered
+    // view was built under the previous type interpretation. Whether that
+    // produces meaningful results is the analyst's responsibility.
+    // Revisit if view invalidation on type change becomes necessary.
+    schema_.set_column_type(*column_index, cmd.type);
+
+    return SuccessResult{};
+}
+
+CommandResult Session::execute_impl(const SelectCommand& cmd) {
+    std::vector<ColumnIndex> columns;
+
+    for (auto column_name : cmd.columns) {
+        columns.push_back(*schema_.find_column(column_name));
+    }
+
+    current_projection_.select(columns);
+
+    return SuccessResult{};
 }
 
 CommandResult Session::execute_impl(const CountCommand&) {
@@ -141,27 +171,52 @@ CommandResult Session::execute_impl(const FilterCommand& cmd) {
         return ErrorResult{"Unknown column: " + cmd.column};
     }
 
-    FilterPredicate predicate{*column_index, cmd.op, cmd.value};
+    const ColumnType column_type = schema_.column_type(*column_index);
+
+    // DateTime filtering requires tick parsing — not yet implemented.
+    if (column_type == ColumnType::DateTime) {
+        return ErrorResult{
+            "DateTime filtering is not yet supported for column '" + cmd.column + "'"
+        };
+    }
+
+    // Validate RHS is parseable as the column's declared type before scanning.
+    if (column_type == ColumnType::Integer || column_type == ColumnType::Float) {
+        double dummy;
+        if (!utils::parse_double(cmd.value, dummy)) {
+            return ErrorResult{
+                "Filter value '" + cmd.value +
+                "' cannot be parsed as " +
+                std::string(column_type_name(column_type)) +
+                " for column '" + cmd.column + "'"
+            };
+        }
+    }
+
+    FilterPredicate predicate{*column_index, column_type, cmd.op, cmd.value};
 
     current_view_ = current_view_.filter(
-        [this, predicate](RecordIndex row_index) {
+        [this, &predicate](RecordIndex row_index) {
             return predicate(make_row_from_file(row_index));
         }
     );
 
-    return CountResult{current_view_.size()};
-}
-
-CommandResult Session::execute_impl(const SelectCommand& cmd) {
-    std::vector<ColumnIndex> columns;
-
-    for (auto column_name : cmd.columns) {
-        columns.push_back(*schema_.find_column(column_name));
+    if (predicate.skipped > 0) {
+        return FilterResult{
+            current_view_.size(),
+            predicate.skipped,
+            std::to_string(predicate.skipped) +
+                " row(s) skipped: field could not be parsed as " +
+                std::string(column_type_name(column_type))
+        };
     }
 
-    current_projection_.select(columns);
+    return FilterResult{current_view_.size(), 0, ""};
+}
 
-    return SuccessResult();
+CommandResult Session::execute_impl(const ResetViewCommand&) {
+    current_view_ = View::identity(row_count());
+    return SuccessResult{};
 }
 
 } // namespace hawk

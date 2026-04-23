@@ -11,13 +11,29 @@
 
 namespace hawk::cli {
 
-inline const std::array<LibCommandInfo, 8> lib_command_table{{
+inline const std::array<LibCommandInfo, 10> lib_command_table{{
     {
         "columns",
         "columns",
         "Shows list of columns",
         [](std::string_view args) -> LibCommand {
             return parsers::columns(args);
+        }
+    },
+    {
+        "set",
+        "set <column> <type>",
+        "Override the inferred type of a column. Takes effect on subsequent filters.",
+        [](std::string_view args) -> LibCommand {
+            return parsers::set_column_type(args);
+        }
+    },
+    {
+        "select",
+        "select <column_1>,..,<column_n>",
+        "Selects columns to show",
+        [](std::string_view args) -> LibCommand {
+            return parsers::select(args);
         }
     },
     {
@@ -61,11 +77,11 @@ inline const std::array<LibCommandInfo, 8> lib_command_table{{
         }
     },
     {
-        "select",
-        "select <column_1>,..,<column_n>",
-        "Selects columns to show",
+        "reset",
+        "reset",
+        "Reset the current view",
         [](std::string_view args) -> LibCommand {
-            return parsers::select(args);
+            return parsers::reset(args);
         }
     },
     {
