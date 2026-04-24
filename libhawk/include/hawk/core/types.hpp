@@ -1,8 +1,10 @@
 #ifndef HAWK_TYPES_HPP
 #define HAWK_TYPES_HPP
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <ratio>
 
 namespace hawk {
 
@@ -18,7 +20,11 @@ using ColumnCount = std::size_t;
 
 using ColumnIndex = std::size_t;
 
-using DateTimeTicks = std::uint64_t;
+using DateTimeTicks = std::int64_t;
+
+using Ticks = std::chrono::duration<int64_t, std::ratio<1, 10'000'000>>;
+
+using SysTicks = std::chrono::sys_time<Ticks>;
 
 } // namespace hawk
 

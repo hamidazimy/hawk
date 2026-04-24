@@ -3,6 +3,7 @@
 find hawk-cli \( -name "*.cpp" -o -name "*.hpp" \) | \
 while read src; do \
     output=$(iwyu \
+        -std=c++20 \
         -Xiwyu --mapping_file=libhawk/iwyu.imp \
         -Xiwyu --no_fwd_decls \
         -Ilibhawk/include \

@@ -15,7 +15,7 @@ Interactive command-line tool for analyzing large log files.
 ## Build Instructions
 
 ### Prerequisites
-- C++17 compatible compiler (GCC 7+, Clang 5+, MSVC 2017+)
+- C++20 compatible compiler (GCC 12+, Clang 16+, MSVC 2022 recommended)
 - CMake 3.15+
 
 ### Building

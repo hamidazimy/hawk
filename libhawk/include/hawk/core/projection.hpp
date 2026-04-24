@@ -4,6 +4,7 @@
 #include <hawk/core/types.hpp>
 
 #include <cstddef>
+#include <format>
 #include <numeric>
 #include <stdexcept>
 #include <vector>

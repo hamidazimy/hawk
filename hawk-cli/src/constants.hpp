@@ -30,6 +30,8 @@ inline const std::string VERSION_STR{
     " " + BUILD_TYPE_STR
 };
 
+inline constexpr std::string_view BUILT_WITH{"Built with C++20\n"};
+
 inline const std::string WELCOME_MSG{
     VERSION_STR +
     "\nType 'help' for available commands, 'quit' to exit.\n"
@@ -37,7 +39,6 @@ inline const std::string WELCOME_MSG{
 
 inline constexpr std::string_view GOODBYE_MSG{"Goodbye!"};
 
-inline constexpr std::string_view BUILT_WITH{"Built with C++17\n"};
 inline constexpr std::string_view PROMPT{"hawk> "};
 
 } // namespace constants

@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cctype>
+#include <compare>
 #include <cstddef>
 #include <charconv>
 #include <iomanip>

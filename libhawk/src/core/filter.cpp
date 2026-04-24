@@ -5,6 +5,7 @@
 #include <hawk/core/column.hpp>
 #include <hawk/utils/utils.hpp>
 
+#include <compare>
 #include <utility>
 
 namespace hawk {

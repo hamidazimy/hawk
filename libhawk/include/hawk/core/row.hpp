@@ -3,6 +3,7 @@
 
 #include <hawk/core/types.hpp>
 
+#include <format>
 #include <optional>
 #include <string_view>
 #include <vector>

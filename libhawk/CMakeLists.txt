@@ -39,8 +39,8 @@ target_include_directories(hawk PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 
-# Require C++17
-target_compile_features(hawk PUBLIC cxx_std_17)
+# Require C++20
+target_compile_features(hawk PUBLIC cxx_std_20)
 
 # Link filesystem library if needed (GCC < 9)
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND
