@@ -11,16 +11,16 @@ namespace hawk::cli {
 namespace parsers {
 
 // Lib command parsers
-ColumnsCommand columns(std::string_view);
-SetColumnTypeCommand set(std::string_view);
-SelectCommand select(std::string_view);
-CountCommand count(std::string_view);
-PeekCommand peek(std::string_view);
-HeadCommand head(std::string_view);
-TailCommand tail(std::string_view);
-FilterCommand filter(std::string_view);
-ResetViewCommand reset(std::string_view);
-ExportCommand eXport(std::string_view);
+LibCommand columns  (std::string_view);
+LibCommand set      (std::string_view);
+LibCommand select   (std::string_view);
+LibCommand count    (std::string_view);
+LibCommand peek     (std::string_view);
+LibCommand head     (std::string_view);
+LibCommand tail     (std::string_view);
+LibCommand filter   (std::string_view);
+LibCommand reset    (std::string_view);
+LibCommand eXport   (std::string_view); // 'export' is a reserved keyword
 
 // Cli command parsers
 inline CliCommand help(std::string_view) { return CliCommandHelp{}; }
