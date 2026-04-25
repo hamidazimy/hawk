@@ -17,8 +17,7 @@ public:
     Projection() = default;
 
     explicit Projection(ColumnCount column_count)
-        : column_count_(column_count)
-        , columns_(column_count_)
+        : columns_(column_count)
     {
         reset();
     }
@@ -40,7 +39,7 @@ public:
     }
 
     ColumnIndex at(std::size_t i) const {
-        if (i >= column_count_)
+        if (i >= columns_.size())
             throw std::out_of_range("Index out of range.");
         return columns_[i];
     }
@@ -50,7 +49,6 @@ public:
     }
 
 private:
-    ColumnCount column_count_;
     std::vector<ColumnIndex> columns_;
 };
 

@@ -108,13 +108,14 @@ CommandResult Session::execute_impl(const SetColumnTypeCommand& cmd) {
 
 CommandResult Session::execute_impl(const SelectCommand& cmd) {
     std::vector<ColumnIndex> columns;
-
-    for (auto column_name : cmd.columns) {
-        columns.push_back(*schema_.find_column(column_name));
+    for (const auto& column_name : cmd.columns) {
+        auto index = schema_.find_column(column_name);
+        if (!index.has_value()) {
+            return ErrorResult{std::format("Unknown column: {}", column_name)};
+        }
+        columns.push_back(*index);
     }
-
     current_projection_.select(columns);
-
     return SuccessResult{};
 }
 
