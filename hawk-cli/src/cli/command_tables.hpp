@@ -4,9 +4,6 @@
 #include <cli/command_info.hpp>
 #include <cli/parsers.hpp>
 
-#include <hawk/hawk.hpp>
-
-#include <string_view>
 #include <array>
 
 namespace hawk::cli {
@@ -16,81 +13,61 @@ inline const std::array<LibCommandInfo, 10> lib_command_table{{
         "columns",
         "columns",
         "Shows list of columns",
-        [](std::string_view args) -> LibCommand {
-            return parsers::columns(args);
-        }
+        parsers::columns
     },
     {
         "set",
         "set type <column> string|integer|float|datetime <datetime format>",
         "Override the inferred type of a column. Takes effect on subsequent filters.",
-        [](std::string_view args) -> LibCommand {
-            return parsers::set(args);
-        }
+        parsers::set
     },
     {
         "select",
         "select <column_1>,..,<column_n>",
         "Selects columns to show",
-        [](std::string_view args) -> LibCommand {
-            return parsers::select(args);
-        }
+        parsers::select
     },
     {
         "count",
         "count",
         "Shows the number of selected records",
-        [](std::string_view args) -> LibCommand {
-            return parsers::count(args);
-        }
+        parsers::count
     },
     {
         "peek",
         "peek [i]",
         "Show the ith rows",
-        [](std::string_view args) -> LibCommand {
-            return parsers::peek(args);
-        }
+        parsers::peek
     },
     {
         "head",
         "head [n]",
         "Show the first n rows (default 10)",
-        [](std::string_view args) -> LibCommand {
-            return parsers::head(args);
-        }
+        parsers::head
     },
     {
         "tail",
         "tail [n]",
         "Show the last n rows (default 10)",
-        [](std::string_view args) -> LibCommand {
-            return parsers::tail(args);
-        }
+        parsers::tail
     },
     {
         "filter",
         "filter <column> <operator> <value>",
         "Filter rows based on a condition",
-        [](std::string_view args) -> LibCommand {
-            return parsers::filter(args);
-        }
+        parsers::filter
     },
     {
         "reset",
         "reset",
         "Reset the current view",
-        [](std::string_view args) -> LibCommand {
-            return parsers::reset(args);
-        }
+        parsers::reset
     },
     {
         "export",
         "export <path>",
         "Exports the current view.",
-        [](std::string_view args) -> LibCommand {
-            return parsers::eXport(args);
-        }
+        parsers::eXport
     }
 }};
 
