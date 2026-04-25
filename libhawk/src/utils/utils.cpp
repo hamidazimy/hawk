@@ -2,6 +2,7 @@
 #include <cctype>
 #include <compare>
 #include <cstddef>
+#include <cstdint>
 #include <charconv>
 #include <iomanip>
 #include <iterator>
@@ -96,6 +97,11 @@ std::string to_lower(std::string str) {
     std::transform(str.begin(), str.end(), str.begin(),
                    [](unsigned char c) { return std::tolower(c); });
     return str;
+}
+
+bool parse_int(std::string_view s, std::int64_t& out) {
+    auto [ptr, ec] = std::from_chars(s.data(), s.data() + s.size(), out);
+    return ec == std::errc{} && ptr == s.data() + s.size();
 }
 
 bool parse_double(std::string_view s, double& out) {

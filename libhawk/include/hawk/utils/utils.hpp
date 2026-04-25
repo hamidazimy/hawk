@@ -2,6 +2,7 @@
 #define HAWK_UTILS_HPP
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -47,6 +48,12 @@ bool iequals(std::string_view a, std::string_view b);
  * Convert string to lowercase
  */
 std::string to_lower(std::string str);
+
+/**
+ * Parse a string as an integer.
+ * Returns true if parsing succeeded and consumed the entire string, false otherwise.
+ */
+bool parse_int(std::string_view s, std::int64_t& out);
 
 /**
  * Parse a string as a double.

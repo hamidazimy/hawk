@@ -20,8 +20,6 @@ using ColumnCount = std::size_t;
 
 using ColumnIndex = std::size_t;
 
-using DateTimeTicks = std::int64_t;
-
 using Ticks = std::chrono::duration<int64_t, std::ratio<1, 10'000'000>>;
 
 using SysTicks = std::chrono::sys_time<Ticks>;

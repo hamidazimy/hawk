@@ -2,15 +2,19 @@
 #define HAWK_CLI_UTILS_HPP
 
 #include <cstdint>
-#include <string>
 #include <optional>
+#include <string>
+#include <string_view>
+#include <vector>
 
 namespace hawk::cli {
 namespace utils {
 
+std::vector<std::string_view> tokenize(std::string_view str);
+
 std::optional<char> parse_delimiter(const std::string& str);
 
-std::uint8_t digits(std::uint64_t n);
+std::uint8_t num_digits(std::uint64_t n);
 
 } // namespace utils
 } // namespace hawk::cli

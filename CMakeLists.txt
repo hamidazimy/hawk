@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.15)
 # Project
 # -----------------------------------------------------------------------------
 
-project(hawk VERSION 0.4.20 LANGUAGES CXX)
+project(hawk VERSION 0.4.21 LANGUAGES CXX)
 
 # -----------------------------------------------------------------------------
 # Build options

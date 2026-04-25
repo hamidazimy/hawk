@@ -22,10 +22,10 @@ inline const std::array<LibCommandInfo, 10> lib_command_table{{
     },
     {
         "set",
-        "set <column> <type>",
+        "set type <column> string|integer|float|datetime <datetime format>",
         "Override the inferred type of a column. Takes effect on subsequent filters.",
         [](std::string_view args) -> LibCommand {
-            return parsers::set_column_type(args);
+            return parsers::set(args);
         }
     },
     {

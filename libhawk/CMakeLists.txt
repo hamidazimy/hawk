@@ -28,6 +28,7 @@ add_library(hawk STATIC
     src/utils/format_inference.cpp
     src/utils/type_inference.cpp
     src/utils/utils.cpp
+    src/utils/datetime_parser.cpp
 )
 
 # Alias target

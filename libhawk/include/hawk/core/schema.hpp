@@ -29,7 +29,8 @@ public:
     // Sets the type of a column by index.
     // Does not invalidate any existing views — callers are responsible for
     // understanding that derived views were built under the previous type.
-    void set_column_type(ColumnIndex index, ColumnType type);
+    void set_column_type(ColumnIndex index, ColumnType type,
+        std::optional<std::string> pattern = std::nullopt);
 
 private:
     std::vector<ColumnSchema> columns_;

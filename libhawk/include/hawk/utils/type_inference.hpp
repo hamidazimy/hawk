@@ -3,28 +3,26 @@
 
 #include <cstddef>
 #include <optional>
+#include <string>
 #include <string_view>
 
-namespace hawk { class RecordSource ; }
-namespace hawk { class RecordParser ; }
+namespace hawk { class RecordSource; }
+namespace hawk { class RecordParser; }
+namespace hawk { struct SessionConfig; }
 namespace hawk { class Schema; }
 namespace hawk { enum class ColumnType; }
-namespace hawk { enum class DateTimeFormat; }
-namespace hawk { struct SessionConfig; }
 
 namespace hawk {
 
 class TypeInferrer {
 public:
     struct Options {
-        std::size_t max_sample_rows = 0; // 0 = full scan
+        std::size_t max_sample_rows      = 0;   // 0 = full scan
+        std::size_t datetime_sample_rows = 100; // rows used for datetime pattern detection
     };
 
-    TypeInferrer()
-        : options_({}) {}
-
-    explicit TypeInferrer(Options options)
-        : options_(options) {}
+    TypeInferrer() : options_({}) {}
+    explicit TypeInferrer(Options options) : options_(options) {}
 
     Schema infer(
         const RecordSource& source,
@@ -33,26 +31,21 @@ public:
     ) const;
 
 private:
-    // Per-column state accumulated during scan
     struct ColumnState {
         bool could_be_integer  = true;
         bool could_be_float    = true;
         bool could_be_datetime = true;
         bool nullable          = false;
-        std::optional<DateTimeFormat> datetime_format; // candidate format
+        std::optional<std::string> datetime_pattern;
+        bool (*datetime_pre_screen)(std::string_view) = nullptr;
     };
 
-    // Type resolution — called after scan completes
     static ColumnType resolve_type(const ColumnState& state);
-
-    // Field-level parsers
-    static bool try_integer(std::string_view field);
-    static bool try_float(std::string_view field);
-    static std::optional<DateTimeFormat> try_datetime(std::string_view field);
 
 private:
     Options options_;
 };
 
 } // namespace hawk
+
 #endif // HAWK_TYPE_INFERRER_HPP

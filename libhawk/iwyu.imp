@@ -18,4 +18,5 @@
     { include: ["\"hawk/utils/format_inference.hpp\"", "private", "<hawk/hawk.hpp>", "public"] },
     { include: ["\"hawk/utils/type_inference.hpp\"",   "private", "<hawk/hawk.hpp>", "public"] },
     { include: ["\"hawk/utils/utils.hpp\"",            "private", "<hawk/hawk.hpp>", "public"] },
+    { include: ["\"hawk/utils/datetime_parser.hpp\"",  "private", "<hawk/hawk.hpp>", "public"] },
 ]

@@ -3,6 +3,7 @@
 
 #include <hawk/core/types.hpp>
 
+#include <optional>
 #include <string>
 #include <utility>
 #include <variant>
@@ -19,9 +20,17 @@ struct ColumnsCommand {
 struct SetColumnTypeCommand {
     std::string column;
     ColumnType type;
+    std::optional<std::string> datetime_pattern; // required when type == DateTime
 
-    SetColumnTypeCommand(std::string column, ColumnType type)
-        : column(std::move(column)), type(type) {}
+    SetColumnTypeCommand(
+        std::string column,
+        ColumnType type,
+        std::optional<std::string> datetime_pattern = std::nullopt
+    )
+        : column(std::move(column))
+        , type(type)
+        , datetime_pattern(std::move(datetime_pattern))
+    {}
 };
 
 struct SelectCommand {

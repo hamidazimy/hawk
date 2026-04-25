@@ -152,8 +152,8 @@ void confirm_schema(Session& session, const Args& args) {
                   << " — " << column_type_name(col.type);
         if (col.nullable)
             std::cout << " (nullable)";
-        if (col.datetime_format.has_value())
-            std::cout << " [" << datetime_format_name(*col.datetime_format) << "]";
+        if (col.type == ColumnType::DateTime && col.datetime_pattern.has_value())
+            std::cout << " [" << col.datetime_pattern.value() << "]";
         std::cout << "\n";
     }
     std::cout << "\n";

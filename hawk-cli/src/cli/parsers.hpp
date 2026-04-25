@@ -12,7 +12,7 @@ namespace parsers {
 
 // Lib command parsers
 ColumnsCommand columns(std::string_view);
-SetColumnTypeCommand set_column_type(std::string_view);
+SetColumnTypeCommand set(std::string_view);
 SelectCommand select(std::string_view);
 CountCommand count(std::string_view);
 PeekCommand peek(std::string_view);

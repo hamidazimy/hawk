@@ -12,8 +12,11 @@
 #include <hawk/core/commands.hpp>
 #include <hawk/core/results.hpp>
 #include <hawk/utils/utils.hpp>
+#include <hawk/utils/datetime_parser.hpp>
 
 #include <algorithm>
+#include <cstdint>
+#include <format>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -82,13 +85,15 @@ CommandResult Session::execute_impl(const ColumnsCommand&) {
 CommandResult Session::execute_impl(const SetColumnTypeCommand& cmd) {
     auto column_index = schema_.find_column(cmd.column);
     if (!column_index) {
-        return ErrorResult{"Unknown column: " + cmd.column};
+        return ErrorResult{
+            std::format("Unknown column: {}", cmd.column)
+        };
     }
 
-    // DateTime is rejected until tick parsing is implemented.
-    if (cmd.type == ColumnType::DateTime) {
+    if (cmd.type == ColumnType::DateTime && !cmd.datetime_pattern.has_value()) {
         return ErrorResult{
-            "Cannot set column type to datetime: DateTime filtering is not yet supported"
+            "Setting a column to datetime requires a pattern. "
+            "Usage: set type <column> datetime \"<pattern>\""
         };
     }
 
@@ -96,7 +101,7 @@ CommandResult Session::execute_impl(const SetColumnTypeCommand& cmd) {
     // view was built under the previous type interpretation. Whether that
     // produces meaningful results is the analyst's responsibility.
     // Revisit if view invalidation on type change becomes necessary.
-    schema_.set_column_type(*column_index, cmd.type);
+    schema_.set_column_type(*column_index, cmd.type, cmd.datetime_pattern);
 
     return SuccessResult{};
 }
@@ -166,34 +171,63 @@ CommandResult Session::execute_impl(const TailCommand& cmd) {
 
 CommandResult Session::execute_impl(const FilterCommand& cmd) {
     auto column_index = schema_.find_column(cmd.column);
-
     if (!column_index) {
-        return ErrorResult{"Unknown column: " + cmd.column};
+        return ErrorResult{
+            std::format("Unknown column: {}", cmd.column)
+        };
     }
 
     const ColumnType column_type = schema_.column_type(*column_index);
 
-    // DateTime filtering requires tick parsing — not yet implemented.
+    // Validate RHS and resolve datetime pattern before scanning.
+    std::optional<std::string> datetime_pattern;
     if (column_type == ColumnType::DateTime) {
-        return ErrorResult{
-            "DateTime filtering is not yet supported for column '" + cmd.column + "'"
-        };
-    }
-
-    // Validate RHS is parseable as the column's declared type before scanning.
-    if (column_type == ColumnType::Integer || column_type == ColumnType::Float) {
-        double dummy;
-        if (!utils::parse_double(cmd.value, dummy)) {
+        const auto& col_schema = schema_.column(*column_index);
+        if (!col_schema.datetime_pattern.has_value()) {
             return ErrorResult{
-                "Filter value '" + cmd.value +
-                "' cannot be parsed as " +
-                std::string(column_type_name(column_type)) +
-                " for column '" + cmd.column + "'"
+                std::format(
+                    "Column '{}' has no datetime pattern — cannot filter",
+                    cmd.column
+                )
+            };
+        }
+        datetime_pattern = col_schema.datetime_pattern;
+        if (!utils::parse_datetime(cmd.value, *datetime_pattern)) {
+            return ErrorResult{
+                std::format(
+                    "Filter value '{}' cannot be parsed "
+                    "as datetime pattern '{}' for column '{}'",
+                    cmd.value, *datetime_pattern, cmd.column
+                )
             };
         }
     }
 
-    FilterPredicate predicate{*column_index, column_type, cmd.op, cmd.value};
+    // Validate RHS is parseable as the column's declared type before scanning.
+    if (column_type == ColumnType::Integer) {
+        std::int64_t dummy;
+        if (!utils::parse_int(cmd.value, dummy)) {
+            return ErrorResult{
+                std::format(
+                    "Filter value '{}' cannot be parsed as {} for column '{}'",
+                    cmd.value, column_type_name(column_type), cmd.column
+                )
+            };
+        }
+    }
+    if (column_type == ColumnType::Float) {
+        double dummy;
+        if (!utils::parse_double(cmd.value, dummy)) {
+            return ErrorResult{
+                std::format(
+                    "Filter value '{}' cannot be parsed as {} for column '{}'",
+                    cmd.value, column_type_name(column_type), cmd.column
+                )
+            };
+        }
+    }
+
+    FilterPredicate predicate{*column_index, column_type, cmd.op, cmd.value, datetime_pattern};
 
     current_view_ = current_view_.filter(
         [this, &predicate](RecordIndex row_index) {
@@ -205,9 +239,10 @@ CommandResult Session::execute_impl(const FilterCommand& cmd) {
         return FilterResult{
             current_view_.size(),
             predicate.skipped,
-            std::to_string(predicate.skipped) +
-                " row(s) skipped: field could not be parsed as " +
-                std::string(column_type_name(column_type))
+            std::format(
+                "{} row(s) skipped: field could not be parsed as {}",
+                predicate.skipped, column_type_name(column_type)
+            )
         };
     }
 

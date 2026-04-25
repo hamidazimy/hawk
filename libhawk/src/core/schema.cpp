@@ -33,11 +33,13 @@ std::optional<ColumnIndex> Schema::find_column(const std::string& name) const {
     return std::nullopt;
 }
 
-void Schema::set_column_type(ColumnIndex index, ColumnType type) {
+void Schema::set_column_type(ColumnIndex index, ColumnType type,
+    std::optional<std::string> pattern)
+{
     columns_[index].type = type;
-    if (type != ColumnType::DateTime) {
-        columns_[index].datetime_format = std::nullopt;
-    }
+    columns_[index].datetime_pattern = (type == ColumnType::DateTime)
+        ? pattern
+        : std::nullopt;
 }
 
 } // namespace hawk

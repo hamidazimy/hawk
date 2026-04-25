@@ -111,7 +111,7 @@ void render_impl(const hawk::RowsResult& res,
                 )
             );
         }
-        index_width = std::max(index_width, hawk::cli::utils::digits(row.index() + 1));
+        index_width = std::max(index_width, hawk::cli::utils::num_digits(row.index() + 1));
     }
     index_width = 0; // Tepmorarily disable index column. TODO: fix this!
     render_header(schema, res.projection, column_widths, index_width, sout);
@@ -141,6 +141,9 @@ void render_impl(const hawk::ColumnsResult& res,
         sout << "(" << hawk::column_type_name(col.type);
         if (col.nullable) {
             sout << ", nullable";
+        }
+        if (col.type == ColumnType::DateTime && col.datetime_pattern.has_value()) {
+            sout << ", " << col.datetime_pattern.value();
         }
         sout << ")";
         sout << std::endl;
