@@ -24,28 +24,46 @@ LibCommand columns  (std::string_view args_line) {
     return ColumnsCommand{};
 }
 
-LibCommand set      (std::string_view args_line) {
+namespace {
+
+LibCommand set_name(std::string_view args_line) {
     auto args = utils::tokenize(args_line);
-    if (args.size() < 3 || args[0] != "type") {
+    if (args.size() != 2) {
         throw std::invalid_argument{
             std::format(
-                "Invalid arguments for set command: {} \n"
-                "Only 'set type <column> <type> (<format>)' is supported at the moment.",
+                "Invalid arguments for set name command: {} \n"
+                "Usage: set name <old_name> <new_name>",
                 args_line
             )
         };
     }
-    auto column = std::string(args[1]);
-    auto type_str = args[2];
+    return SetColumnNameCommand{std::string(args[0]), std::string(args[1])};
+}
+
+LibCommand set_type(std::string_view args_line) {
+    auto args = utils::tokenize(args_line);
+    if (args.size() < 2) {
+        throw std::invalid_argument{
+            std::format(
+                "Invalid arguments for set type command: {} \n"
+                "Usage: set type <column> <type> (<datetime format>)",
+                args_line
+            )
+        };
+    }
+    auto column = std::string(args[0]);
+    auto type_str = args[1];
     ColumnType type = ColumnType::String; // default, will be overridden
+    std::optional<std::string> datetime_pattern;
     if (type_str == "datetime") {
-        if (args.size() != 4) {
+        type = ColumnType::DateTime;
+        if (args.size() != 3) {
             throw std::invalid_argument{
                 "Setting a column to datetime requires a pattern. "
                 "Usage: set type <column> datetime \"<pattern>\""
             };
         }
-        auto pattern = std::string(args[3]);
+        auto pattern = std::string(args[2]);
         if (pattern.empty()) {
             throw std::invalid_argument{
                 "Datetime pattern cannot be empty"
@@ -57,9 +75,8 @@ LibCommand set      (std::string_view args_line) {
                 *error
             };
         }
-        return SetColumnTypeCommand{column, ColumnType::DateTime, pattern};
-    }
-    if (type_str == "string") {
+        datetime_pattern = pattern;
+    } else if (type_str == "string") {
         type = ColumnType::String;
     } else if (type_str == "integer" || type_str == "int") {
         type = ColumnType::Integer;
@@ -73,7 +90,34 @@ LibCommand set      (std::string_view args_line) {
             )
         };
     }
-    return SetColumnTypeCommand{column, type, std::nullopt};
+    return SetColumnTypeCommand{column, type, datetime_pattern};
+}
+
+}
+
+LibCommand set      (std::string_view args_line) {
+    auto args = utils::tokenize(args_line);
+    if (args.empty()) {
+        throw std::invalid_argument{
+            std::format(
+                "set command requires additional arguments. Got: {} \n"
+                "Usage: set type|name <args>"
+            , args_line)
+        };
+    } else if (args[0] == "name") {
+        return set_name(args_line.substr(5)); // length of "name "
+    } else if (args[0] == "type") {
+        return set_type(args_line.substr(5)); // length of "type "
+    } else {
+        throw std::invalid_argument{
+            std::format(
+                "Invalid set command. Got: {} \n"
+                "Only 'set type <column> <type> (<format>)' and "
+                "'set name <old_name> <new_name>' are supported at the moment.",
+                args_line
+            )
+        };
+    }
 }
 
 LibCommand select   (std::string_view args_line) {

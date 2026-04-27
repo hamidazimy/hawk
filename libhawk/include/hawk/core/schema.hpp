@@ -26,6 +26,8 @@ public:
 
     std::optional<ColumnIndex> find_column(const std::string& name) const;
 
+    void set_column_name(ColumnIndex index, std::string name);
+
     // Sets the type of a column by index.
     // Does not invalidate any existing views — callers are responsible for
     // understanding that derived views were built under the previous type.

@@ -82,6 +82,18 @@ CommandResult Session::execute_impl(const ColumnsCommand&) {
     return ColumnsResult{std::move(schema_.columns())};
 }
 
+CommandResult Session::execute_impl(const SetColumnNameCommand& cmd) {
+    auto column_index = schema_.find_column(cmd.old_name);
+    if (!column_index) {
+        return ErrorResult{
+            std::format("Unknown column: {}", cmd.old_name)
+        };
+    }
+
+    schema_.set_column_name(*column_index, cmd.new_name);
+    return SuccessResult{};
+}
+
 CommandResult Session::execute_impl(const SetColumnTypeCommand& cmd) {
     auto column_index = schema_.find_column(cmd.column);
     if (!column_index) {

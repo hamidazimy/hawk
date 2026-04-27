@@ -17,8 +17,9 @@ inline const std::array<LibCommandInfo, 10> lib_command_table{{
     },
     {
         "set",
-        "set type <column> string|integer|float|datetime <datetime format>",
-        "Override the inferred type of a column. Takes effect on subsequent filters.",
+        "set type <column> string|integer|float|datetime [<datetime pattern>]"
+        "set name <column> <new name>",
+        "Set column type or name",
         parsers::set
     },
     {

@@ -17,6 +17,16 @@ namespace hawk {
 struct ColumnsCommand {
 };
 
+struct SetColumnNameCommand {
+    std::string old_name;
+    std::string new_name;
+
+    SetColumnNameCommand(std::string old_name, std::string new_name)
+        : old_name(std::move(old_name))
+        , new_name(std::move(new_name))
+    {}
+};
+
 struct SetColumnTypeCommand {
     std::string column;
     ColumnType type;
@@ -73,6 +83,7 @@ struct ExportCommand {
 
 using LibCommand = std::variant<
     ColumnsCommand,
+    SetColumnNameCommand,
     SetColumnTypeCommand,
     SelectCommand,
     CountCommand,

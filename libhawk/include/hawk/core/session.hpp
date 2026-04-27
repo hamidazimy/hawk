@@ -51,6 +51,7 @@ private:
 
     CommandResult execute_impl(const ColumnsCommand&);
     CommandResult execute_impl(const CountCommand&);
+    CommandResult execute_impl(const SetColumnNameCommand&);
     CommandResult execute_impl(const SetColumnTypeCommand&);
     CommandResult execute_impl(const SelectCommand&);
     CommandResult execute_impl(const PeekCommand&);

@@ -33,6 +33,10 @@ std::optional<ColumnIndex> Schema::find_column(const std::string& name) const {
     return std::nullopt;
 }
 
+void Schema::set_column_name(ColumnIndex index, std::string name) {
+    columns_[index].name = std::move(name);
+}
+
 void Schema::set_column_type(ColumnIndex index, ColumnType type,
     std::optional<std::string> pattern)
 {
