@@ -12,6 +12,8 @@
 
 namespace hawk::utils {
 
+namespace {
+
 // -----------------------------------------------------------------------------
 // Pattern translation
 // -----------------------------------------------------------------------------
@@ -24,7 +26,7 @@ namespace hawk::utils {
 //   hh      → %H    mm   → %M    ss.f+→ %S (compound: whole + fractional seconds)
 //   ss      → %S    f+   → %S    +tz  → %z
 //   T, Z and separators - / . : space → literal
-static std::optional<std::string> pattern_to_chrono_fmt(std::string_view pattern) {
+std::optional<std::string> pattern_to_chrono_fmt(std::string_view pattern) {
     std::string fmt;
     fmt.reserve(pattern.size() * 2);
 
@@ -56,6 +58,8 @@ static std::optional<std::string> pattern_to_chrono_fmt(std::string_view pattern
 
     return fmt;
 }
+
+} // anonymous namespace
 
 // -----------------------------------------------------------------------------
 // Public interface

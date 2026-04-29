@@ -21,17 +21,19 @@
 
 namespace hawk {
 
+namespace {
+
 // -----------------------------------------------------------------------------
 // Field-level type checks
 // -----------------------------------------------------------------------------
 
-static bool try_integer(std::string_view field) {
+bool try_integer(std::string_view field) {
     std::int64_t out;
     auto [ptr, ec] = std::from_chars(field.data(), field.data() + field.size(), out);
     return ec == std::errc{} && ptr == field.data() + field.size();
 }
 
-static bool try_float(std::string_view field) {
+bool try_float(std::string_view field) {
     double out;
     auto [ptr, ec] = std::from_chars(field.data(), field.data() + field.size(), out);
     return ec == std::errc{} && ptr == field.data() + field.size();
@@ -41,7 +43,7 @@ static bool try_float(std::string_view field) {
 // Datetime pre-screens — cheap structural checks, no parsing
 // -----------------------------------------------------------------------------
 
-static bool all_digits(std::string_view s, size_t start, size_t len) {
+bool all_digits(std::string_view s, size_t start, size_t len) {
     if (start + len > s.size()) return false;
     for (size_t i = start; i < start + len; ++i) {
         if (s[i] < '0' || s[i] > '9') return false;
@@ -50,7 +52,7 @@ static bool all_digits(std::string_view s, size_t start, size_t len) {
 }
 
 // "YYYY-MM-DDThh:mm:ssZ" and "YYYY-MM-DDThh:mm:ss.f+Z"
-static bool pre_screen_iso8601_utc(std::string_view s) {
+bool pre_screen_iso8601_utc(std::string_view s) {
     if (s.size() < 20) return false;
     if (s[19] == '.') {
         if (s.size() < 22 || s.back() != 'Z') return false;
@@ -65,7 +67,7 @@ static bool pre_screen_iso8601_utc(std::string_view s) {
 }
 
 // "YYYY-MM-DD hh:mm:ss" and "YYYY-MM-DD hh:mm:ss.f+"
-static bool pre_screen_iso8601_local(std::string_view s) {
+bool pre_screen_iso8601_local(std::string_view s) {
     if (s.size() < 19) return false;
     return s[4]  == '-' && s[7]  == '-' && s[10] == ' ' &&
            s[13] == ':' && s[16] == ':' &&
@@ -75,7 +77,7 @@ static bool pre_screen_iso8601_local(std::string_view s) {
 }
 
 // "YYYY-MM-DD"
-static bool pre_screen_date_only(std::string_view s) {
+bool pre_screen_date_only(std::string_view s) {
     if (s.size() != 10) return false;
     return s[4] == '-' && s[7] == '-' &&
            all_digits(s, 0, 4) &&
@@ -92,7 +94,7 @@ struct KnownPattern {
     bool (*pre_screen)(std::string_view);
 };
 
-static constexpr KnownPattern KNOWN_PATTERNS[] = {
+constexpr KnownPattern KNOWN_PATTERNS[] = {
     { "YYYY-MM-DDThh:mm:ss.f+Z", pre_screen_iso8601_utc   },
     { "YYYY-MM-DDThh:mm:ssZ",    pre_screen_iso8601_utc   },
     { "YYYY-MM-DD hh:mm:ss.f+",  pre_screen_iso8601_local },
@@ -104,13 +106,15 @@ static constexpr size_t KNOWN_PATTERN_COUNT =
     sizeof(KNOWN_PATTERNS) / sizeof(KNOWN_PATTERNS[0]);
 
 // Phase 1 only — full parse to identify the pattern index.
-static std::optional<size_t> try_datetime_index(std::string_view field) {
+std::optional<size_t> try_datetime_index(std::string_view field) {
     for (size_t i = 0; i < KNOWN_PATTERN_COUNT; ++i) {
         if (utils::parse_datetime(field, KNOWN_PATTERNS[i].pattern).has_value())
             return i;
     }
     return std::nullopt;
 }
+
+} // anonymous namespace
 
 // -----------------------------------------------------------------------------
 // Type resolution
