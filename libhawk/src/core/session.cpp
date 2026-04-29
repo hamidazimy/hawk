@@ -15,6 +15,7 @@
 #include <hawk/utils/datetime_parser.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <cstdint>
 #include <format>
 #include <optional>
@@ -54,13 +55,24 @@ Row Session::make_row_from_file(RecordIndex file_index) const {
 }
 
 CommandResult Session::execute(const LibCommand& command) {
-    return std::visit(
+    const auto t0 = std::chrono::steady_clock::now();
+
+    auto result = std::visit(
         [this](const auto& cmd) -> CommandResult {
             return execute_impl(cmd);
         },
         command
     );
+
+    const auto t1 = std::chrono::steady_clock::now();
+
+    result.execution_time_ms =
+        std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count();
+
+    return result;
 }
+
+// --- Command implementations ---
 
 CommandResult Session::execute_impl(const ExportCommand&) {
     auto count = current_view_.size();
@@ -75,38 +87,45 @@ CommandResult Session::execute_impl(const ExportCommand&) {
     if (config_.has_header) {
         header = source_->get_record(0);
     }
-    return ExportResult{header, std::move(rows)};
+
+    return CommandResult::ok(ExportResult{
+        header,
+        std::move(rows)
+    });
 }
 
 CommandResult Session::execute_impl(const ColumnsCommand&) {
-    return ColumnsResult{std::move(schema_.columns())};
+    return CommandResult::ok(ColumnsResult{
+        std::move(schema_.columns())
+    });
 }
 
 CommandResult Session::execute_impl(const SetColumnNameCommand& cmd) {
     auto column_index = schema_.find_column(cmd.old_name);
     if (!column_index) {
-        return ErrorResult{
-            std::format("Unknown column: {}", cmd.old_name)
-        };
+        return CommandResult::err(std::format(
+            "Unknown column: {}",
+            cmd.old_name
+        ));
     }
 
     schema_.set_column_name(*column_index, cmd.new_name);
-    return SuccessResult{};
+    return CommandResult::ok();
 }
 
 CommandResult Session::execute_impl(const SetColumnTypeCommand& cmd) {
     auto column_index = schema_.find_column(cmd.column);
     if (!column_index) {
-        return ErrorResult{
-            std::format("Unknown column: {}", cmd.column)
-        };
+        return CommandResult::err(std::format(
+            "Unknown column: {}",
+            cmd.column
+        ));
     }
 
     if (cmd.type == ColumnType::DateTime && !cmd.datetime_pattern.has_value()) {
-        return ErrorResult{
-            "Setting a column to datetime requires a pattern. "
-            "Usage: set type <column> datetime \"<pattern>\""
-        };
+        return CommandResult::err(
+            "Setting a column to datetime requires a pattern."
+        );
     }
 
     // NOTE: This does not invalidate the current view. Any existing filtered
@@ -115,7 +134,7 @@ CommandResult Session::execute_impl(const SetColumnTypeCommand& cmd) {
     // Revisit if view invalidation on type change becomes necessary.
     schema_.set_column_type(*column_index, cmd.type, cmd.datetime_pattern);
 
-    return SuccessResult{};
+    return CommandResult::ok();
 }
 
 CommandResult Session::execute_impl(const SelectCommand& cmd) {
@@ -123,27 +142,35 @@ CommandResult Session::execute_impl(const SelectCommand& cmd) {
     for (const auto& column_name : cmd.columns) {
         auto index = schema_.find_column(column_name);
         if (!index.has_value()) {
-            return ErrorResult{std::format("Unknown column: {}", column_name)};
+            return CommandResult::err(std::format(
+                "Unknown column: {}",
+                column_name
+            ));
         }
         columns.push_back(*index);
     }
     current_projection_.select(columns);
-    return SuccessResult{};
+    return CommandResult::ok();
 }
 
 CommandResult Session::execute_impl(const CountCommand&) {
-    return CountResult{current_view_.size()};
+    return CommandResult::ok(CountResult{
+        current_view_.size()
+    });
 }
 
 CommandResult Session::execute_impl(const PeekCommand& cmd) {
     if (cmd.index >= row_count()) {
-        return ErrorResult{"Index out of range"};
+        return CommandResult::err(std::format(
+            "Index out of range: {} (total records: {})",
+            cmd.index, row_count()
+        ));
     }
 
-    return RowsResult{
+    return CommandResult::ok(RowsResult{
         {make_row_from_file(cmd.index)},
         &current_projection_
-    };
+    });
 }
 
 CommandResult Session::execute_impl(const HeadCommand& cmd) {
@@ -157,10 +184,10 @@ CommandResult Session::execute_impl(const HeadCommand& cmd) {
         rows.emplace_back(make_row_from_view(i));
     }
 
-    return RowsResult{
+    return CommandResult::ok(RowsResult{
         std::move(rows),
         &current_projection_
-    };
+    });
 }
 
 CommandResult Session::execute_impl(const TailCommand& cmd) {
@@ -176,18 +203,19 @@ CommandResult Session::execute_impl(const TailCommand& cmd) {
         rows.emplace_back(make_row_from_view(i));
     }
 
-    return RowsResult{
+    return CommandResult::ok(RowsResult{
         std::move(rows),
         &current_projection_
-    };
+    });
 }
 
 CommandResult Session::execute_impl(const FilterCommand& cmd) {
     auto column_index = schema_.find_column(cmd.column);
     if (!column_index) {
-        return ErrorResult{
-            std::format("Unknown column: {}", cmd.column)
-        };
+        return CommandResult::err(std::format(
+            "Unknown column: {}",
+            cmd.column
+        ));
     }
 
     const ColumnType column_type = schema_.column_type(*column_index);
@@ -197,22 +225,18 @@ CommandResult Session::execute_impl(const FilterCommand& cmd) {
     if (column_type == ColumnType::DateTime) {
         const auto& col_schema = schema_.column(*column_index);
         if (!col_schema.datetime_pattern.has_value()) {
-            return ErrorResult{
-                std::format(
-                    "Column '{}' has no datetime pattern — cannot filter",
-                    cmd.column
-                )
-            };
+            return CommandResult::err(std::format(
+                "Column '{}' has no datetime pattern — cannot filter",
+                cmd.column
+            ));
         }
         datetime_pattern = col_schema.datetime_pattern;
         if (!utils::parse_datetime(cmd.value, *datetime_pattern)) {
-            return ErrorResult{
-                std::format(
-                    "Filter value '{}' cannot be parsed "
-                    "as datetime pattern '{}' for column '{}'",
-                    cmd.value, *datetime_pattern, cmd.column
-                )
-            };
+            return CommandResult::err(std::format(
+                "Filter value '{}' cannot be parsed "
+                "as datetime pattern '{}' for column '{}'",
+                cmd.value, *datetime_pattern, cmd.column
+            ));
         }
     }
 
@@ -220,23 +244,19 @@ CommandResult Session::execute_impl(const FilterCommand& cmd) {
     if (column_type == ColumnType::Integer) {
         std::int64_t dummy;
         if (!utils::parse_int(cmd.value, dummy)) {
-            return ErrorResult{
-                std::format(
-                    "Filter value '{}' cannot be parsed as {} for column '{}'",
-                    cmd.value, column_type_name(column_type), cmd.column
-                )
-            };
+            return CommandResult::err(std::format(
+                "Filter value '{}' cannot be parsed as {} for column '{}'",
+                cmd.value, column_type_name(column_type), cmd.column
+            ));
         }
     }
     if (column_type == ColumnType::Float) {
         double dummy;
         if (!utils::parse_double(cmd.value, dummy)) {
-            return ErrorResult{
-                std::format(
-                    "Filter value '{}' cannot be parsed as {} for column '{}'",
-                    cmd.value, column_type_name(column_type), cmd.column
-                )
-            };
+            return CommandResult::err(std::format(
+                "Filter value '{}' cannot be parsed as {} for column '{}'",
+                cmd.value, column_type_name(column_type), cmd.column
+            ));
         }
     }
 
@@ -248,23 +268,24 @@ CommandResult Session::execute_impl(const FilterCommand& cmd) {
         }
     );
 
+    auto result = CommandResult::ok(FilterResult{
+        current_view_.size(),
+        predicate.skipped
+    });
+
     if (predicate.skipped > 0) {
-        return FilterResult{
-            current_view_.size(),
-            predicate.skipped,
-            std::format(
-                "{} row(s) skipped: field could not be parsed as {}",
-                predicate.skipped, column_type_name(column_type)
-            )
-        };
+        result.warnings.push_back(std::format(
+            "{} row(s) skipped: field could not be parsed as {}",
+            predicate.skipped, column_type_name(column_type)
+        ));
     }
 
-    return FilterResult{current_view_.size(), 0, ""};
+    return result;
 }
 
 CommandResult Session::execute_impl(const ResetViewCommand&) {
     current_view_ = View::identity(row_count());
-    return SuccessResult{};
+    return CommandResult::ok();
 }
 
 } // namespace hawk

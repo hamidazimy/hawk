@@ -5,11 +5,13 @@
 #include <hawk/core/row.hpp>
 #include <hawk/core/column.hpp>
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <variant>
 #include <vector>
+#include <utility>
 
 namespace hawk { class Projection; }
 
@@ -28,7 +30,6 @@ struct CountResult {
 struct FilterResult {
     RecordCount matched;
     RecordCount skipped;   // 0 if clean
-    std::string warning;   // empty if skipped == 0
 };
 
 struct ColumnsResult {
@@ -40,22 +41,32 @@ struct ExportResult {
     std::vector<Row> rows;
 };
 
-struct SuccessResult {
-};
-
-struct ErrorResult {
-    std::string message;
-};
-
-using CommandResult = std::variant<
+using ResultPayload = std::variant<
     RowsResult,
     CountResult,
     FilterResult,
     ColumnsResult,
-    ExportResult,
-    SuccessResult,
-    ErrorResult
+    ExportResult
 >;
+
+struct CommandResult {
+    std::optional<ResultPayload> payload;
+    std::optional<std::string> error;
+    std::vector<std::string> warnings;
+    std::uint64_t execution_time_ms = 0;
+
+    static CommandResult ok() {
+        return {};
+    }
+
+    static CommandResult ok(ResultPayload payload) {
+        return {std::move(payload), std::nullopt, {}};
+    }
+
+    static CommandResult err(std::string error) {
+        return {std::nullopt, std::move(error), {}};
+    }
+};
 
 } // namespace hawk
 

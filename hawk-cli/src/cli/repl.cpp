@@ -81,7 +81,7 @@ void REPL::run() {
                     auto cli_cmd = info.parser(args);
                     exit_requested = !this->execute(cli_cmd);
                 } catch (const std::exception& e) {
-                    std::cout << "Error: " << e.what() << "\n";
+                    renderers::render_error(e.what());
                 }
                 handled = true;
                 break;
@@ -111,7 +111,7 @@ void REPL::run() {
 
                     renderers::render_result(result, session_->schema());
                 } catch (const std::exception& e) {
-                    std::cout << "Error: " << e.what() << "\n";
+                    renderers::render_error(e.what());
                 }
                 handled = true;
                 break;
@@ -119,7 +119,7 @@ void REPL::run() {
         }
 
         if (!handled) {
-            std::cout << "Unknown command: " << cmd << "\n";
+            renderers::render_error("Unknown command: " + std::string(cmd));
         }
     }
 

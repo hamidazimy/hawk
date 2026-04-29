@@ -155,12 +155,6 @@ void render_impl(const hawk::FilterResult& res,
                  std::ostream& sout)
 {
     sout << cli::log_success("Matched: " + std::to_string(res.matched)) << std::endl;
-    if (res.skipped > 0) {
-        sout << cli::log_success("Skipped: " + std::to_string(res.skipped)) << std::endl;
-        if (!res.warning.empty()) {
-            sout << cli::log_warning("Warning: " + res.warning) << std::endl;
-        }
-    }
 }
 
 void render_impl(const hawk::ExportResult& res,
@@ -175,20 +169,6 @@ void render_impl(const hawk::ExportResult& res,
     }
 }
 
-void render_impl(const hawk::SuccessResult&,
-                 const hawk::Schema&,
-                 std::ostream& sout)
-{
-    sout << hawk::cli::log_success("✔ Done.") << std::endl;
-}
-
-void render_impl(const hawk::ErrorResult& res,
-                 const hawk::Schema&,
-                 std::ostream& sout)
-{
-    render_error(res.message, sout);
-}
-
 } // anonymous namespace
 
 void render_result(
@@ -196,16 +176,38 @@ void render_result(
     const hawk::Schema& schema,
     std::ostream& sout)
 {
-    std::visit(
-        [&](const auto& res) {
-            render_impl(res, schema, sout);
-        },
-        result
-    );
+    if (result.error.has_value()) {
+        render_error(result.error.value(), sout);
+        return;
+    }
+    if (result.payload.has_value()) {
+        std::visit(
+            [&](const auto& res) {
+                render_impl(res, schema, sout);
+            },
+            result.payload.value()
+        );
+    } else {
+        render_success(sout);
+    }
+    render_warnings(result.warnings, sout);
+
+    std::string time_str = result.execution_time_ms == 0 ? "<1" : std::to_string(result.execution_time_ms);
+    sout << cli::sgr::colorize(std::format("({}ms)", time_str), "#555") << std::endl;
+}
+
+void render_success(std::ostream& sout) {
+    sout << hawk::cli::log_success("✔ Done.") << std::endl;
 }
 
 void render_error(const std::string& message, std::ostream& sout) {
     sout << hawk::cli::log_error("✘ Error: " + message) << std::endl;
+}
+
+void render_warnings(const std::vector<std::string>& warnings, std::ostream& sout) {
+    for (const auto& warning : warnings) {
+        sout << hawk::cli::log_warning("‼ Warning: " + warning) << std::endl;
+    }
 }
 
 } // namespace renderers

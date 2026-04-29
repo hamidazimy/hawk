@@ -9,11 +9,11 @@
 #include <hawk/core/view.hpp>
 #include <hawk/core/projection.hpp>
 #include <hawk/core/commands.hpp>
-#include <hawk/core/results.hpp>
 
 #include <memory>
 
 namespace hawk { class Row; }
+namespace hawk { struct CommandResult; }
 
 namespace hawk {
 
