@@ -44,14 +44,23 @@ Session::Session(
     current_projection_ = Projection(schema_.column_count());
 }
 
-Row Session::make_row_from_view(RecordIndex view_index) const {
+std::string_view Session::raw_record_from_file(RecordIndex file_index) const {
+    return source_->get_record(to_source_index(file_index));
+}
+
+std::string_view Session::raw_record_from_view(RecordIndex view_index) const {
     auto file_index = current_view_.at(view_index);
-    return make_row_from_file(file_index);
+    return raw_record_from_file(file_index);
 }
 
 Row Session::make_row_from_file(RecordIndex file_index) const {
-    auto record = source_->get_record(to_source_index(file_index));
+    auto record = raw_record_from_file(file_index);
     return Row(file_index, record, parser_.get());
+}
+
+Row Session::make_row_from_view(RecordIndex view_index) const {
+    auto file_index = current_view_.at(view_index);
+    return make_row_from_file(file_index);
 }
 
 CommandResult Session::execute(const LibCommand& command) {
@@ -210,6 +219,19 @@ CommandResult Session::execute_impl(const TailCommand& cmd) {
 }
 
 CommandResult Session::execute_impl(const FilterCommand& cmd) {
+    if (cmd.row_search) {
+        if (cmd.op != FilterOp::HAS) {
+            return CommandResult::err("$row only supports the 'has' operator");
+        }
+        RowSearchPredicate predicate{cmd.value};
+        current_view_ = current_view_.filter(
+            [this, &predicate](RecordIndex row_index) {
+                return predicate(raw_record_from_file(row_index));
+            }
+        );
+        return CommandResult::ok(FilterResult{current_view_.size(), 0});
+    }
+
     auto column_index = schema_.find_column(cmd.column);
     if (!column_index) {
         return CommandResult::err(std::format(
@@ -219,6 +241,14 @@ CommandResult Session::execute_impl(const FilterCommand& cmd) {
     }
 
     const ColumnType column_type = schema_.column_type(*column_index);
+
+    // Validate operator is compatible with column type before scanning.
+    if (cmd.op == FilterOp::HAS && column_type != ColumnType::String) {
+        return CommandResult::err(std::format(
+            "Operator 'has' is only valid for string columns, column '{}' is {}",
+            cmd.column, column_type_name(column_type)
+        ));
+    }
 
     // Validate RHS and resolve datetime pattern before scanning.
     std::optional<std::string> datetime_pattern;

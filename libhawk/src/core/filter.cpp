@@ -39,6 +39,13 @@ FilterPredicate::FilterPredicate(
 
 bool FilterPredicate::operator()(const Row& row) {
     auto lhs = row.get(column_index);
+    if (op == FilterOp::HAS) {
+        if (column_type != ColumnType::String) {
+            ++skipped;
+            return false;
+        }
+        return utils::contains(lhs, rhs_str);
+    }
     switch (column_type) {
         case ColumnType::Integer: {
             std::int64_t lhs_int;
@@ -71,6 +78,7 @@ bool FilterPredicate::compare_numeric(std::int64_t lhs, std::int64_t rhs) const 
         case FilterOp::LT: return lhs <  rhs;
         case FilterOp::GE: return lhs >= rhs;
         case FilterOp::LE: return lhs <= rhs;
+        default: return false;
     }
     return false;
 }
@@ -83,6 +91,7 @@ bool FilterPredicate::compare_numeric(double lhs, double rhs) const {
         case FilterOp::LT: return lhs <  rhs;
         case FilterOp::GE: return lhs >= rhs;
         case FilterOp::LE: return lhs <= rhs;
+        default: return false;
     }
     return false;
 }
@@ -95,8 +104,13 @@ bool FilterPredicate::compare_string(std::string_view lhs, std::string_view rhs)
         case FilterOp::LT: return lhs <  rhs;
         case FilterOp::GE: return lhs >= rhs;
         case FilterOp::LE: return lhs <= rhs;
+        default: return false;
     }
     return false;
+}
+
+bool RowSearchPredicate::operator()(std::string_view raw_record) const {
+    return utils::contains(raw_record, needle);
 }
 
 } // namespace hawk

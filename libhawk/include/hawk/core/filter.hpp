@@ -19,7 +19,8 @@ enum class FilterOp {
     GT, // >
     LT, // <
     GE, // >=
-    LE  // <=
+    LE, // <=
+    HAS // case-insensitive substring match, string columns and $row only
 };
 
 struct FilterPredicate {
@@ -47,6 +48,12 @@ private:
     bool compare_numeric(std::int64_t lhs, std::int64_t rhs) const;
     bool compare_numeric(double lhs, double rhs) const;
     bool compare_string(std::string_view lhs, std::string_view rhs) const;
+};
+
+struct RowSearchPredicate {
+    std::string needle;
+    RecordCount skipped = 0; // unused but kept parallel with FilterPredicate
+    bool operator()(std::string_view raw_record) const;
 };
 
 } // namespace hawk

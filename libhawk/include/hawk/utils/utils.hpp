@@ -61,6 +61,12 @@ bool parse_int(std::string_view s, std::int64_t& out);
  */
 bool parse_double(std::string_view s, double& out);
 
+/**
+ * Search for a substring in a string, with optional case sensitivity.
+ * Returns true if the needle is found in the haystack, false otherwise.
+ */
+bool contains(std::string_view haystack, std::string_view needle, bool case_sensitive = false);
+
 } // namespace hawk::utils
 
 #endif // HAWK_UTILS_HPP

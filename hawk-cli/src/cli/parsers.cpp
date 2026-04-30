@@ -202,7 +202,9 @@ LibCommand filter   (std::string_view args_line) {
         };
     }
     hawk::FilterOp op;
-    if (args[1] == "==") {
+    if (args[1] == "has") {
+        op = hawk::FilterOp::HAS;
+    } else if (args[1] == "==") {
         op = hawk::FilterOp::EQ;
     } else if (args[1] == "!=") {
         op = hawk::FilterOp::NE;
@@ -219,7 +221,13 @@ LibCommand filter   (std::string_view args_line) {
             std::format("Invalid operator in filter command: {}", args[1])
         };
     }
-    return FilterCommand{std::string(args[0]), op, std::string(args[2])};
+    if (args[0] == "$row" && op != hawk::FilterOp::HAS) {
+        throw std::invalid_argument{
+            std::format("Only 'has' operator is supported for $row searches. Got: {}", args[1])
+        };
+    }
+
+    return FilterCommand{std::string(args[0]), args[0] == "$row", op, std::string(args[2])};
 }
 
 LibCommand reset    (std::string_view args_line) {

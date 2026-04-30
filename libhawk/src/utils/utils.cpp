@@ -112,4 +112,19 @@ bool parse_double(std::string_view s, double& out) {
     return result.ec == std::errc{} && result.ptr == end;
 }
 
+bool contains(std::string_view haystack, std::string_view needle, bool case_sensitive = false) {
+    if (needle.empty()) return true;
+    if (needle.size() > haystack.size()) return false;
+    auto it = std::search(
+        haystack.begin(), haystack.end(),
+        needle.begin(),   needle.end(),
+        [case_sensitive](unsigned char a, unsigned char b) {
+            return case_sensitive
+                ? a == b
+                : std::tolower(a) == std::tolower(b);
+        }
+    );
+    return it != haystack.end();
+}
+
 } // namespace hawk::utils

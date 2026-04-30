@@ -65,11 +65,12 @@ struct TailCommand {
 };
 
 struct FilterCommand {
-    std::string column;
+    std::string column;         // empty when row_search is true
+    bool row_search = false;    // true when target is $row
     hawk::FilterOp op;
     std::string value;
-    explicit FilterCommand(std::string column, hawk::FilterOp op, std::string value)
-        : column(std::move(column)), op(op), value(std::move(value)) {}
+    explicit FilterCommand(std::string column, bool row_search, hawk::FilterOp op, std::string value)
+        : column(std::move(column)), row_search(row_search), op(op), value(std::move(value)) {}
 };
 
 struct ResetViewCommand {

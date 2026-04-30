@@ -11,6 +11,7 @@
 #include <hawk/core/commands.hpp>
 
 #include <memory>
+#include <string_view>
 
 namespace hawk { class Row; }
 namespace hawk { struct CommandResult; }
@@ -46,8 +47,11 @@ private:
 
     RecordCount visible_row_count() const noexcept { return current_view_.size(); }
 
-    Row make_row_from_view(RecordIndex view_index) const;
+    std::string_view raw_record_from_file(RecordIndex file_index) const;
+    std::string_view raw_record_from_view(RecordIndex view_index) const;
+
     Row make_row_from_file(RecordIndex file_index) const;
+    Row make_row_from_view(RecordIndex view_index) const;
 
     CommandResult execute_impl(const ColumnsCommand&);
     CommandResult execute_impl(const CountCommand&);
