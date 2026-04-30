@@ -39,7 +39,7 @@ struct FilterPredicate {
         ColumnType                  type,
         FilterOp                    op,
         std::string                 rhs,
-        std::optional<std::string>  datetime_pattern = std::nullopt
+        std::optional<std::string>  dt_pattern = std::nullopt
     );
 
     bool operator()(const Row& row);

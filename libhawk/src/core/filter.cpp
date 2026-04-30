@@ -17,13 +17,13 @@ FilterPredicate::FilterPredicate(
     ColumnType                  type,
     FilterOp                    op,
     std::string                 rhs,
-    std::optional<std::string>  datetime_pattern
+    std::optional<std::string>  dt_pattern
 )
     : column_index(col)
     , column_type(type)
     , op(op)
     , rhs_str(std::move(rhs))
-    , datetime_pattern(std::move(datetime_pattern))
+    , datetime_pattern(std::move(dt_pattern))
 {
     if (type == ColumnType::Integer) {
         utils::parse_int(rhs_str, rhs_int);
