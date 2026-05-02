@@ -2,7 +2,6 @@
 
 #include <hawk/core/types.hpp>
 #include <hawk/core/record_source.hpp>
-#include <hawk/core/session_config.hpp>
 #include <hawk/core/schema.hpp>
 #include <hawk/core/row.hpp>
 #include <hawk/core/view.hpp>
@@ -25,6 +24,7 @@
 #include <variant>
 #include <vector>
 
+namespace hawk { struct SessionConfig; }
 namespace hawk { class RecordParser; }
 
 namespace hawk {
@@ -39,10 +39,9 @@ Session::Session(
     , source_(std::move(source))
     , parser_(std::move(parser))
     , schema_(std::move(schema))
-{
-    current_view_ = View::identity(row_count());
-    current_projection_ = Projection(schema_.column_count());
-}
+    , current_view_(View::identity(row_count()))
+    , current_projection_(schema_.column_count())
+{}
 
 std::string_view Session::raw_record_from_file(RecordIndex file_index) const {
     return source_->get_record(to_source_index(file_index));
@@ -83,7 +82,7 @@ CommandResult Session::execute(const LibCommand& command) {
 
 // --- Command implementations ---
 
-CommandResult Session::execute_impl(const ExportCommand&) {
+CommandResult Session::execute_impl(const RowsCommand&) {
     auto count = current_view_.size();
     std::vector<Row> rows;
     rows.reserve(count);
@@ -92,14 +91,9 @@ CommandResult Session::execute_impl(const ExportCommand&) {
         rows.emplace_back(make_row_from_view(i));
     }
 
-    std::string_view header = {};
-    if (config_.has_header) {
-        header = source_->get_record(0);
-    }
-
-    return CommandResult::ok(ExportResult{
-        header,
-        std::move(rows)
+    return CommandResult::ok(RowsResult{
+        std::move(rows),
+        &current_projection_
     });
 }
 

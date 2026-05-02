@@ -8,7 +8,7 @@
 
 namespace hawk::cli {
 
-inline const std::array<LibCommandInfo, 10> lib_command_table{{
+inline const std::array<LibCommandInfo, 9> lib_command_table{{
     {
         "columns",
         "columns",
@@ -63,16 +63,23 @@ inline const std::array<LibCommandInfo, 10> lib_command_table{{
         "reset",
         "Reset the current view",
         parsers::reset
-    },
-    {
-        "export",
-        "export <path>",
-        "Exports the current view.",
-        parsers::eXport
     }
 }};
 
-inline const std::array<CliCommandInfo, 3> cli_command_table{{
+inline const std::array<CliCommandInfo, 4> cli_command_table{{
+    {
+        "export",
+        "export <path> --full|--projected",
+        "Exports the current view to a file. "
+        "Use --full to export full rows (default), --projected to export only selected columns.",
+        parsers::eXport
+    },
+    {
+        "help",
+        "help",
+        "Show help information",
+        parsers::help
+    },
     {
         "exit",
         "exit",
@@ -84,12 +91,6 @@ inline const std::array<CliCommandInfo, 3> cli_command_table{{
         "quit",
         "Alias for exit",
         parsers::exit
-    },
-    {
-        "help",
-        "help",
-        "Show help information",
-        parsers::help
     }
 }};
 

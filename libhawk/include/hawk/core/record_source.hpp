@@ -16,6 +16,8 @@ public:
 
     virtual RecordCount record_count() const noexcept = 0;
     virtual std::string_view get_record(RecordIndex index) const = 0;
+
+    virtual bool has_crlf() const noexcept = 0;
 };
 
 class CSVRecordSource : public RecordSource {
@@ -24,6 +26,8 @@ public:
 
     RecordCount record_count() const noexcept override { return record_offsets_.size(); }
     std::string_view get_record(RecordIndex index) const override;
+
+    bool has_crlf() const noexcept override { return file_.has_crlf(); }
 
 private:
     void build_index();

@@ -1,5 +1,6 @@
 #include "renderers.hpp"
 
+#include <cli/cli_commands.hpp>
 #include <helpers/output_decorator.hpp>
 #include <helpers/utils.hpp>
 
@@ -24,12 +25,13 @@ namespace {
 
 // ----- Helper functions -----
 
-void render_hline(char ch,
-                  const std::vector<std::size_t>& column_widths,
-                  const std::uint8_t index_width,
-                  std::string index_sep,
-                  std::ostream& sout)
-{
+void render_hline(
+    char ch,
+    const std::vector<std::size_t>& column_widths,
+    const std::uint8_t index_width,
+    std::string index_sep,
+    std::ostream& sout
+) {
     if (index_width > 0) {
         sout << std::setw(index_width + 1) << std::setfill(' ') << "" << index_sep << " ";
     }
@@ -38,12 +40,13 @@ void render_hline(char ch,
     sout << "\n" << std::setfill(' ');
 }
 
-void render_header(const hawk::Schema& schema,
-                   const hawk::Projection* projection,
-                   const std::vector<std::size_t>& column_widths,
-                   const std::uint8_t index_width,
-                   std::ostream& sout)
-{
+void render_header(
+    const hawk::Schema& schema,
+    const hawk::Projection* projection,
+    const std::vector<std::size_t>& column_widths,
+    const std::uint8_t index_width,
+    std::ostream& sout
+) {
     render_hline('-', column_widths, index_width, "┐", sout);
     if (index_width > 0) {
         sout << std::setw(index_width) << std::right << "#" << " │ ";
@@ -56,12 +59,13 @@ void render_header(const hawk::Schema& schema,
     render_hline('-', column_widths, index_width, "┤", sout);
 }
 
-void render_row(const hawk::Row& row,
-                const hawk::Projection* projection,
-                const std::vector<std::size_t>& column_widths,
-                const std::uint8_t index_width,
-                std::ostream& sout)
-{
+void render_row(
+    const hawk::Row& row,
+    const hawk::Projection* projection,
+    const std::vector<std::size_t>& column_widths,
+    const std::uint8_t index_width,
+    std::ostream& sout
+) {
     if (index_width > 0) {
         sout << std::setw(index_width) << std::right << row.index() + 1 << " │ ";
     }
@@ -88,10 +92,11 @@ void render_row(const hawk::Row& row,
 
 // ----- Render functions implementations -----
 
-void render_impl(const hawk::RowsResult& res,
-                 const hawk::Schema& schema,
-                 std::ostream& sout)
-{
+void render_impl(
+    const hawk::RowsResult& res,
+    const hawk::Schema& schema,
+    std::ostream& sout
+) {
     const std::size_t MAX_COL_WIDTH = 20;
     const std::size_t MIN_COL_WIDTH = 4;
     ColumnCount column_count = res.projection->size();
@@ -120,17 +125,19 @@ void render_impl(const hawk::RowsResult& res,
     }
 }
 
-void render_impl(const hawk::CountResult& res,
-                 const hawk::Schema&,
-                 std::ostream& sout)
-{
+void render_impl(
+    const hawk::CountResult& res,
+    const hawk::Schema&,
+    std::ostream& sout
+) {
     sout << cli::log_info("Count: " + std::to_string(res.count)) << std::endl;
 }
 
-void render_impl(const hawk::ColumnsResult& res,
-                 const hawk::Schema&,
-                 std::ostream& sout)
-{
+void render_impl(
+    const hawk::ColumnsResult& res,
+    const hawk::Schema&,
+    std::ostream& sout
+) {
     std::size_t max_name_length = 0;
     for (const auto& col : res.columns)
         max_name_length = std::max(max_name_length, col.name.size());
@@ -150,23 +157,12 @@ void render_impl(const hawk::ColumnsResult& res,
     }
 }
 
-void render_impl(const hawk::FilterResult& res,
-                 const hawk::Schema&,
-                 std::ostream& sout)
-{
+void render_impl(
+    const hawk::FilterResult& res,
+    const hawk::Schema&,
+    std::ostream& sout
+) {
     sout << cli::log_success("Matched: " + std::to_string(res.matched)) << std::endl;
-}
-
-void render_impl(const hawk::ExportResult& res,
-                 const hawk::Schema&,
-                 std::ostream& sout)
-{
-    if (res.header.has_value()) {
-        sout << res.header.value() << std::endl;
-    }
-    for (const auto& row : res.rows) {
-        sout << row.record() << std::endl;
-    }
 }
 
 } // anonymous namespace
@@ -174,8 +170,8 @@ void render_impl(const hawk::ExportResult& res,
 void render_result(
     const hawk::CommandResult& result,
     const hawk::Schema& schema,
-    std::ostream& sout)
-{
+    std::ostream& sout
+) {
     if (result.error.has_value()) {
         render_error(result.error.value(), sout);
         return;
@@ -191,8 +187,60 @@ void render_result(
         render_success(sout);
     }
     render_warnings(result.warnings, sout);
+    render_execution_time(result.execution_time_ms, sout);
+}
 
-    std::string time_str = result.execution_time_ms == 0 ? "<1" : std::to_string(result.execution_time_ms);
+void render_export(
+    const hawk::RowsResult& result,
+    const hawk::Schema& schema,
+    const hawk::SessionConfig& config,
+    ExportMode mode,
+    std::ostream& out
+) {
+    const std::string_view eol = config.use_crlf ? "\r\n" : "\n";
+    const bool use_projection = mode == ExportMode::Projected
+                                && result.projection
+                                && !result.projection->is_identity();
+
+    // Render header
+    if (config.has_header) {
+        bool first = true;
+        if (use_projection) {
+            for (auto col_idx : result.projection->columns()) {
+                if (!first) out << config.delimiter;
+                out << schema.column(col_idx).name;
+                first = false;
+            }
+        } else {
+            for (hawk::ColumnIndex i = 0; i < schema.column_count(); ++i) {
+                if (!first) out << config.delimiter;
+                out << schema.column(i).name;
+                first = false;
+            }
+        }
+        out << eol;
+    }
+
+    // Render rows
+    if (use_projection) {
+        for (const auto& row : result.rows) {
+            bool first = true;
+            for (std::size_t i = 0; i < result.projection->size(); ++i) {
+                if (!first) out << config.delimiter;
+                out << row.get_projected(result.projection, i);
+                first = false;
+            }
+            out << eol;
+        }
+    } else {
+        for (const auto& row : result.rows) {
+            out << row.record() << eol;
+        }
+    }
+}
+
+void render_execution_time(std::uint64_t ms, std::ostream& sout) {
+    std::string time_str = ms == 0 ? "<1" : std::to_string(ms);
     sout << cli::sgr::colorize(std::format("({}ms)", time_str), "#555") << std::endl;
 }
 
@@ -204,9 +252,13 @@ void render_error(const std::string& message, std::ostream& sout) {
     sout << hawk::cli::log_error("✘ Error: " + message) << std::endl;
 }
 
+void render_warning(const std::string& warning, std::ostream& sout) {
+    sout << hawk::cli::log_warning("‼ Warning: " + warning) << std::endl;
+}
+
 void render_warnings(const std::vector<std::string>& warnings, std::ostream& sout) {
     for (const auto& warning : warnings) {
-        sout << hawk::cli::log_warning("‼ Warning: " + warning) << std::endl;
+        render_warning(warning, sout);
     }
 }
 

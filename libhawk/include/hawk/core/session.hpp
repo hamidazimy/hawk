@@ -53,6 +53,7 @@ private:
     Row make_row_from_file(RecordIndex file_index) const;
     Row make_row_from_view(RecordIndex view_index) const;
 
+    CommandResult execute_impl(const RowsCommand&);
     CommandResult execute_impl(const ColumnsCommand&);
     CommandResult execute_impl(const CountCommand&);
     CommandResult execute_impl(const SetColumnNameCommand&);
@@ -63,7 +64,6 @@ private:
     CommandResult execute_impl(const TailCommand&);
     CommandResult execute_impl(const FilterCommand&);
     CommandResult execute_impl(const ResetViewCommand&);
-    CommandResult execute_impl(const ExportCommand&);
 
 private:
     const SessionConfig config_;

@@ -12,9 +12,11 @@
 
 #include <array>
 #include <exception>
+#include <format>
 #include <fstream>
 #include <iostream>
 #include <iomanip>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -100,15 +102,6 @@ void REPL::run() {
                 try {
                     auto lib_cmd = info.parser(args);
                     auto result = session_->execute(lib_cmd);
-
-                    if (auto* export_cmd = std::get_if<ExportCommand>(&lib_cmd)) {
-                        std::ofstream fout(export_cmd->path);
-                        if (!fout) throw  std::ios_base::failure("cannot open file '" + export_cmd->path + "'");
-                        renderers::render_result(result, session_->schema(), fout);
-                        handled = true;
-                        break;
-                    }
-
                     renderers::render_result(result, session_->schema());
                 } catch (const std::exception& e) {
                     renderers::render_error(e.what());
@@ -133,6 +126,52 @@ bool REPL::execute(const CliCommand& command) {
         },
         command
     );
+}
+
+bool REPL::execute_impl(const CliCommandExport& cmd) {
+    std::ofstream fout(cmd.path, std::ios::binary);
+    if (!fout) {
+        throw std::ios_base::failure(std::format(
+            "Cannot open file '{}'", cmd.path
+        ));
+    }
+
+    static char write_buffer[4 * 1024 * 1024];
+    fout.rdbuf()->pubsetbuf(write_buffer, sizeof(write_buffer));
+
+    auto result = session_->execute(RowsCommand{});
+
+    if (result.error) {
+        throw std::runtime_error(*result.error);
+    }
+
+    auto& rows_result = std::get<RowsResult>(result.payload.value());
+
+    renderers::render_export(
+        rows_result,
+        session_->schema(),
+        session_->config(),
+        cmd.mode,
+        fout
+    );
+
+    // Surface any warnings to console
+    renderers::render_warnings(result.warnings, std::cerr);
+
+    // Add projection warning if applicable
+    if (cmd.mode == ExportMode::Full &&
+        rows_result.projection &&
+        !rows_result.projection->is_identity()) {
+        renderers::render_warning(
+            "Exported full row — active column selection not applied.\n\t"
+            "Use --projected to export current projection.",
+            std::cerr
+        );
+    }
+
+    renderers::render_execution_time(result.execution_time_ms, std::cout);
+
+    return true;
 }
 
 bool REPL::execute_impl(const CliCommandHelp&) {

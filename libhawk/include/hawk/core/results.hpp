@@ -8,7 +8,6 @@
 #include <cstdint>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <variant>
 #include <vector>
 #include <utility>
@@ -36,17 +35,11 @@ struct ColumnsResult {
     std::vector<ColumnSchema> columns;
 };
 
-struct ExportResult {
-    std::optional<std::string_view> header;
-    std::vector<Row> rows;
-};
-
 using ResultPayload = std::variant<
     RowsResult,
     CountResult,
     FilterResult,
-    ColumnsResult,
-    ExportResult
+    ColumnsResult
 >;
 
 struct CommandResult {

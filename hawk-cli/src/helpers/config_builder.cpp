@@ -102,6 +102,7 @@ SessionConfig build_config(const Args& args, const RecordSource& source) {
     // If args are fully explicit, skip inference entirely
     if (args.delimiter.has_value() && args.has_header.has_value()) {
         SessionConfig config;
+        config.use_crlf   = source.has_crlf();
         config.delimiter  = args.delimiter.value();
         config.has_header = args.has_header.value();
         return config;
@@ -119,6 +120,7 @@ SessionConfig build_config(const Args& args, const RecordSource& source) {
 
     // Merge: args override inference where specified
     SessionConfig config = merge_config(args, inference_result);
+    config.use_crlf = source.has_crlf();
 
     display_config(config);
 

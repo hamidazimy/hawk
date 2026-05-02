@@ -17,7 +17,8 @@ public:
     Projection() = default;
 
     explicit Projection(ColumnCount column_count)
-        : columns_(column_count)
+        : total_columns_(column_count)
+        , columns_(column_count)
     {
         reset();
     }
@@ -25,6 +26,8 @@ public:
     void reset() {
         std::iota(columns_.begin(), columns_.end(), 0);
     }
+
+    bool is_identity() const noexcept;
 
     void select(std::vector<ColumnIndex> cols) {
         columns_ = std::move(cols);
@@ -49,6 +52,7 @@ public:
     }
 
 private:
+    const ColumnCount total_columns_ = 0;  // schema column count, never changes
     std::vector<ColumnIndex> columns_;
 };
 

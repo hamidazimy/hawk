@@ -22,6 +22,7 @@ add_library(hawk STATIC
     src/core/row.cpp
     src/core/view.cpp
     src/core/filter.cpp
+    src/core/projection.cpp
 
     ${PLATFORM_SOURCES}
 

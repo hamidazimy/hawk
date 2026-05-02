@@ -1,5 +1,6 @@
 #include "parsers.hpp"
 
+#include <cli/cli_commands.hpp>
 #include <helpers/utils.hpp>
 
 #include <format>
@@ -239,19 +240,40 @@ LibCommand reset    (std::string_view args_line) {
     return ResetViewCommand{};
 }
 
-LibCommand eXport   (std::string_view args_line) {
+CliCommand eXport   (std::string_view args_line) {
     if (args_line.empty()) {
         throw std::invalid_argument{
             "Please provide a path."
         };
     }
     auto args = utils::tokenize(args_line);
-    if (args.size() != 1) {
-        throw std::invalid_argument{
-            std::format("Invalid arguments for export command: {}", args_line)
-        };
+    ExportMode mode = ExportMode::Full;
+    std::string path;
+
+    for (const auto& arg : args) {
+        if (arg == "--projected") {
+            mode = ExportMode::Projected;
+        } else if (arg == "--full") {
+            if (mode == ExportMode::Projected) {
+                throw std::invalid_argument{
+                    "Cannot specify both --full and --projected."
+                };
+            }
+            mode = ExportMode::Full;
+        } else if (path.empty()) {
+            path = std::string(arg);
+        } else {
+            throw std::invalid_argument{
+                std::format("Unexpected argument for export command: {}", arg)
+            };
+        }
     }
-    return ExportCommand{std::string(args[0])};
+
+    if (path.empty()) {
+        throw std::invalid_argument{"Please provide a path."};
+    }
+
+    return CliCommandExport{std::move(path), mode};
 }
 
 } // namespace parsers

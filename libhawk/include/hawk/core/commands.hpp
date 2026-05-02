@@ -14,6 +14,9 @@ namespace hawk { enum class FilterOp; }
 
 namespace hawk {
 
+struct RowsCommand {
+};
+
 struct ColumnsCommand {
 };
 
@@ -76,13 +79,8 @@ struct FilterCommand {
 struct ResetViewCommand {
 };
 
-struct ExportCommand {
-    std::string path;
-    explicit ExportCommand(std::string path)
-        : path(path) {}
-};
-
 using LibCommand = std::variant<
+    RowsCommand,
     ColumnsCommand,
     SetColumnNameCommand,
     SetColumnTypeCommand,
@@ -92,8 +90,7 @@ using LibCommand = std::variant<
     HeadCommand,
     TailCommand,
     FilterCommand,
-    ResetViewCommand,
-    ExportCommand
+    ResetViewCommand
 >;
 
 } // namespace hawk

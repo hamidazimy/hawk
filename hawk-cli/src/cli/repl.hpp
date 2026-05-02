@@ -23,6 +23,7 @@ public:
 private:
     bool execute(const CliCommand& cmd);
 
+    bool execute_impl(const CliCommandExport&);
     bool execute_impl(const CliCommandHelp&);
     bool execute_impl(const CliCommandExit&);
 

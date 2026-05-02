@@ -4,6 +4,7 @@
 namespace hawk {
 
 struct SessionConfig {
+    bool use_crlf = false;
     char delimiter = ',';
     bool has_header = false;
 };
