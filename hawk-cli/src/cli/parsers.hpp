@@ -23,7 +23,7 @@ LibCommand reset    (std::string_view);
 
 // Cli command parsers
 CliCommand eXport(std::string_view); // 'export' is a reserved keyword
-inline CliCommand help(std::string_view) { return CliCommandHelp{}; }
+CliCommand help  (std::string_view);
 inline CliCommand exit(std::string_view) { return CliCommandExit{}; }
 
 } // namespace parsers

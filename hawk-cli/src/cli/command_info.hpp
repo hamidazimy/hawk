@@ -13,6 +13,7 @@ struct LibCommandInfo {
     std::string_view name;
     std::string_view usage;
     std::string_view description;
+    std::string_view detail;
     LibCommand (*parser)(std::string_view);
 };
 
@@ -20,6 +21,7 @@ struct CliCommandInfo {
     std::string_view name;
     std::string_view usage;
     std::string_view description;
+    std::string_view detail;
     CliCommand (*parser)(std::string_view);
 };
 

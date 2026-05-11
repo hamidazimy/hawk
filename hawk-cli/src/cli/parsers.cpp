@@ -276,5 +276,18 @@ CliCommand eXport   (std::string_view args_line) {
     return CliCommandExport{std::move(path), mode};
 }
 
+CliCommand help     (std::string_view args_line) {
+    if (args_line.empty()) {
+        return CliCommandHelp{std::nullopt};
+    }
+    auto args = utils::tokenize(args_line);
+    if (args.size() != 1) {
+        throw std::invalid_argument{
+            std::format("help command takes at most one argument. Got: {}", args_line)
+        };
+    }
+    return CliCommandHelp{std::optional<std::string>{args[0]}};
+}
+
 } // namespace parsers
 } // namespace hawk::cli

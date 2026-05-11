@@ -37,6 +37,14 @@ void REPL::run() {
     std::cout << sgr::colorize(std::string(constants::ASCII_LOGO), "#149") << std::endl;
     std::cout << constants::WELCOME_MSG << std::endl;
 
+    const CliCommandInfo* help_command_info = nullptr;
+    for (const auto& info : cli_command_table) {
+        if (info.name == "help") {
+            help_command_info = &info;
+            break;
+        }
+    }
+
     while (true) {
         std::cout << constants::PROMPT;
         std::cout.flush();
@@ -73,7 +81,14 @@ void REPL::run() {
                 ? std::string_view{}
                 : line.substr(space_pos + 1);
 
-        // ---- Try CLI commands first ----
+        // ---- Check for "--help" flag ----
+        if (utils::trim(args) == "--help" && help_command_info) {
+            auto help_command = help_command_info->parser(cmd);
+            this->execute(help_command);
+            continue;
+        }
+
+        // ---- Try CLI commands ----
         bool handled = false;
         bool exit_requested = false;
 
@@ -174,17 +189,46 @@ bool REPL::execute_impl(const CliCommandExport& cmd) {
     return true;
 }
 
-bool REPL::execute_impl(const CliCommandHelp&) {
-    std::cout << sgr::rgb("#153") << "Built-in Commands:\n" << sgr::RESET;
-    for (const auto& info : cli_command_table) {
-        std::cout << sgr::rgb("#448") << std::right << std::setw(10) << info.usage << sgr::RESET << "  "
-                  << std::left << info.description << "\n";
-    }
-    std::cout << std::endl;
-    std::cout << sgr::rgb("#153") << "Library Commands:\n" << sgr::RESET;
-    for (const auto& info : lib_command_table) {
-        std::cout << sgr::rgb("#448") << std::right << std::setw(10) << info.usage << sgr::RESET << "  "
-                  << std::left << info.description << "\n";
+bool REPL::execute_impl(const CliCommandHelp& cmd) {
+    if (cmd.command_name) {
+        auto render_command_detail = [](const auto& info) {
+            std::cout
+                << sgr::colorize("Usage: ",   "#153")
+                << sgr::colorize(info.name,   "#448") << " "
+                << sgr::colorize(info.usage,  "#844") << "\n\n"
+                << sgr::colorize(info.detail, "#444") << "\n";
+        };
+
+        for (auto & info : cli_command_table) {
+            if (info.name == *cmd.command_name) {
+                render_command_detail(info);
+                return true;
+            }
+        }
+        for (auto & info : lib_command_table) {
+            if (info.name == *cmd.command_name) {
+                render_command_detail(info);
+                return true;
+            }
+        }
+        renderers::render_error("No such command: " + *cmd.command_name);
+    } else {
+        auto render_command_summary = [](const auto& info) {
+            std::cout
+                << sgr::rgb("#448") << std::right << std::setw(10) << info.name
+                << sgr::rgb("#844") << " " << info.usage << "\n"
+                << sgr::rgb("#444") << std::setw(10) << "" << " " << std::left << info.description
+                << sgr::RESET << "\n\n";
+        };
+
+        std::cout << sgr::rgb("#153") << "Built-in Commands:\n\n" << sgr::RESET;
+        for (const auto& info : cli_command_table) {
+            render_command_summary(info);
+        }
+        std::cout << sgr::rgb("#153") << "Library Commands:\n\n" << sgr::RESET;
+        for (const auto& info : lib_command_table) {
+            render_command_summary(info);
+        }
     }
 
     return true; // continue REPL

@@ -43,8 +43,8 @@ std::string rgb(const std::string& rgb_code) {
     return sgr("38;2;" + std::to_string(r) + ";" + std::to_string(g) + ";" + std::to_string(b));
 }
 
-std::string colorize(const std::string& output, const std::string& color) {
-    return rgb(color) + output + RESET;
+std::string colorize(const std::string_view& output, const std::string& color) {
+    return rgb(color) + std::string(output) + RESET;
 }
 
 } // namespace sgr

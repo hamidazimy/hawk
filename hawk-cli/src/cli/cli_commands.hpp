@@ -1,6 +1,7 @@
 #ifndef HAWK_CLI_COMMANDS_HPP
 #define HAWK_CLI_COMMANDS_HPP
 
+#include <optional>
 #include <string>
 #include <variant>
 
@@ -13,7 +14,10 @@ struct CliCommandExport {
     ExportMode  mode = ExportMode::Full;
 };
 
-struct CliCommandHelp {};
+struct CliCommandHelp {
+    std::optional<std::string> command_name; // if empty, show general help
+};
+
 struct CliCommandExit {};
 
 using CliCommand = std::variant<

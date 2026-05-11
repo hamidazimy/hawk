@@ -2,6 +2,7 @@
 #define HAWK_CLI_OUTPUT_DECORATOR_HPP
 
 #include <string>
+#include <string_view>
 
 namespace hawk::cli {
 
@@ -13,7 +14,7 @@ std::string sgr(const std::string& code);
 
 std::string rgb(const std::string& rgb_code);
 
-std::string colorize(const std::string& output, const std::string& color);
+std::string colorize(const std::string_view& output, const std::string& color);
 
 } // namespace sgr
 
