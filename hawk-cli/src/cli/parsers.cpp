@@ -3,6 +3,7 @@
 #include <cli/cli_commands.hpp>
 #include <helpers/utils.hpp>
 
+#include <algorithm>
 #include <format>
 #include <optional>
 #include <cstddef>
@@ -16,16 +17,43 @@
 namespace hawk::cli {
 namespace parsers {
 
-LibCommand columns  (std::string_view args_line) {
-    if (!args_line.empty()) {
+namespace {
+
+bool expand_if_range(std::string_view token, std::vector<std::string>& out) {
+    // Must start with $col
+    if (!token.starts_with("$col")) return false;
+    auto rest = token.substr(4); // after "$col"
+
+    // Find the colon
+    auto colon = rest.find(':');
+    if (colon == std::string_view::npos) return false;
+
+    auto start_str = rest.substr(0, colon);
+    auto end_str   = rest.substr(colon + 1);
+
+    std::int64_t start, end;
+    if (!hawk::utils::parse_int(start_str, start) ||
+        !hawk::utils::parse_int(end_str,   end)) {
         throw std::invalid_argument{
-            std::format("columns command does not take any arguments. Got: {}", args_line)
+            std::format("Invalid range expression: {}", token)
         };
     }
-    return ColumnsCommand{};
-}
+    if (start < 1 || end < 1) {
+        throw std::invalid_argument{
+            std::format("Column indices in range must be >= 1: {}", token)
+        };
+    }
+    if (start > end) {
+        throw std::invalid_argument{
+            std::format("Range start must be <= end: {}", token)
+        };
+    }
 
-namespace {
+    for (std::int64_t i = start; i <= end; ++i) {
+        out.push_back(std::format("$col{}", i));
+    }
+    return true;
+}
 
 LibCommand set_name(std::string_view args_line) {
     auto args = utils::tokenize(args_line);
@@ -52,8 +80,8 @@ LibCommand set_type(std::string_view args_line) {
             )
         };
     }
-    auto column = std::string(args[0]);
-    auto type_str = args[1];
+    auto column = args[0];
+    const auto& type_str = args[1];
     ColumnType type = ColumnType::String; // default, will be overridden
     std::optional<std::string> datetime_pattern;
     if (type_str == "datetime") {
@@ -94,6 +122,15 @@ LibCommand set_type(std::string_view args_line) {
     return SetColumnTypeCommand{column, type, datetime_pattern};
 }
 
+} // namespace
+
+LibCommand columns  (std::string_view args_line) {
+    if (!args_line.empty()) {
+        throw std::invalid_argument{
+            std::format("columns command does not take any arguments. Got: {}", args_line)
+        };
+    }
+    return ColumnsCommand{};
 }
 
 LibCommand set      (std::string_view args_line) {
@@ -105,17 +142,22 @@ LibCommand set      (std::string_view args_line) {
                 "Usage: set type|name <args>"
             , args_line)
         };
-    } else if (args[0] == "name") {
-        return set_name(args_line.substr(5)); // length of "name "
-    } else if (args[0] == "type") {
-        return set_type(args_line.substr(5)); // length of "type "
+    }
+
+    // Find where the subcommand argument starts in the original line
+    auto subcommand = args[0];
+    auto rest = hawk::utils::trim(args_line.substr(subcommand.size()));
+
+    if (subcommand == "name") {
+        return set_name(rest);
+    } else if (subcommand == "type") {
+        return set_type(rest);
     } else {
         throw std::invalid_argument{
             std::format(
-                "Invalid set command. Got: {} \n"
-                "Only 'set type <column> <type> (<format>)' and "
-                "'set name <old_name> <new_name>' are supported at the moment.",
-                args_line
+                "Unknown set subcommand: {}\n"
+                "Supported: set type|name <args>",
+                subcommand
             )
         };
     }
@@ -124,21 +166,28 @@ LibCommand set      (std::string_view args_line) {
 LibCommand select   (std::string_view args_line) {
     if (args_line.empty()) {
         throw std::invalid_argument{
-            "select requires at least one column. "
-            "Usage: select <col1>,<col2>,..."
+            "select requires at least one column.\n"
+            "Usage: select <col1>,<col2>,... or select $col2:5"
         };
     }
-    auto col_views = hawk::utils::split(args_line, ',');
+
+    std::string normalised{args_line};
+    std::replace(normalised.begin(), normalised.end(), ',', ' ');
+    auto tokens = utils::tokenize(normalised);
+
     std::vector<std::string> cols;
-    cols.reserve(col_views.size());
-    for (auto sv : col_views) {
-        auto trimmed = hawk::utils::trim(sv);
-        if (trimmed.empty()) {
-            throw std::invalid_argument{
-                "Empty column name in select"
-            };
+    cols.reserve(tokens.size());
+
+    for (auto token : tokens) {
+        if (!expand_if_range(token, cols)) {
+            cols.emplace_back(hawk::utils::trim(token));
         }
-        cols.emplace_back(trimmed);
+    }
+
+    if (cols.empty()) {
+        throw std::invalid_argument{
+            "select requires at least one column."
+        };
     }
     return SelectCommand{std::move(cols)};
 }
@@ -154,9 +203,7 @@ LibCommand count    (std::string_view args_line) {
 
 LibCommand peek     (std::string_view args_line) {
     if (args_line.empty()) {
-        throw std::invalid_argument{
-            "Please provide a record index to show."
-        };
+        return PeekCommand{0}; // default to first row
     }
     std::int64_t index;
     if (!hawk::utils::parse_int(args_line, index) || index < 1) {

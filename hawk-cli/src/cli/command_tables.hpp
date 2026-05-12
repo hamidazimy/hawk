@@ -32,13 +32,13 @@ inline const std::array<LibCommandInfo, 9> lib_command_table{{
     },
     {
         "select",
-        "select <column_1>,..,<column_n>",
+        "select <column_1>,..,<column_n> $colX $colN:M",
         "Select columns to display",
         "Restrict displayed (and exported) columns to the specified list.\n"
         "  Column names are comma-separated.\n\n"
         "Examples:\n"
         "  select timestamp,event_id,message,$col7\n"
-        "  select $col1,$col3",
+        "  select $col1,$col3 $col5:8",
         parsers::select
     },
     {

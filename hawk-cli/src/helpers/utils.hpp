@@ -10,7 +10,7 @@
 namespace hawk::cli {
 namespace utils {
 
-std::vector<std::string_view> tokenize(std::string_view str);
+std::vector<std::string> tokenize(std::string_view str, bool quoted = true);
 
 std::optional<char> parse_delimiter(const std::string& str);
 

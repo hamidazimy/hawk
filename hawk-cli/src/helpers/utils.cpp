@@ -1,5 +1,6 @@
 #include "utils.hpp"
 
+#include <cctype>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -10,29 +11,32 @@
 namespace hawk::cli {
 namespace utils {
 
-std::vector<std::string_view> tokenize(std::string_view str) {
-    std::vector<std::string_view> tokens;
-    std::size_t start = 0;
+std::vector<std::string> tokenize(std::string_view str, bool quoted) {
+    std::vector<std::string> tokens;
+    std::size_t i = 0;
+    while (i < str.size()) {
+        // Skip whitespace
+        while (i < str.size() && std::isspace(static_cast<unsigned char>(str[i])))
+            ++i;
+        if (i >= str.size()) break;
 
-    while (start < str.size()) {
-        // Skip spaces
-        while (start < str.size() && str[start] == ' ') ++start;
-        if (start >= str.size()) break;
-
-        if (str[start] == '"') {
-            // Quoted token — find closing quote
-            std::size_t end = str.find('"', start + 1);
-            if (end == std::string_view::npos) {
-                throw std::invalid_argument{"Unclosed quote in input"};
+        if (quoted && str[i] == '"') {
+            // Quoted token — strip quotes, content becomes the token
+            ++i;
+            auto start = i;
+            while (i < str.size() && str[i] != '"')
+                ++i;
+            if (i >= str.size()) {
+                throw std::invalid_argument{"Unterminated quote in command"};
             }
-            tokens.push_back(str.substr(start + 1, end - start - 1));
-            start = end + 1;
+            tokens.emplace_back(str.substr(start, i - start));
+            ++i; // skip closing quote
         } else {
-            // Unquoted token — find next space
-            std::size_t end = start;
-            while (end < str.size() && str[end] != ' ') ++end;
-            tokens.push_back(str.substr(start, end - start));
-            start = end;
+            // Unquoted token — read until whitespace
+            auto start = i;
+            while (i < str.size() && !std::isspace(static_cast<unsigned char>(str[i])))
+                ++i;
+            tokens.emplace_back(str.substr(start, i - start));
         }
     }
 
