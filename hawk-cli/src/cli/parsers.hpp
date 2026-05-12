@@ -14,6 +14,8 @@ namespace parsers {
 LibCommand columns  (std::string_view);
 LibCommand set      (std::string_view);
 LibCommand select   (std::string_view);
+LibCommand select_add(std::string_view);
+LibCommand select_rem(std::string_view);
 LibCommand count    (std::string_view);
 LibCommand peek     (std::string_view);
 LibCommand head     (std::string_view);

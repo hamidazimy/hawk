@@ -33,6 +33,9 @@ public:
         columns_ = std::move(cols);
     }
 
+    void add(const std::vector<ColumnIndex>& cols);
+    void drop(const std::vector<ColumnIndex>& cols);
+
     const std::vector<ColumnIndex>& columns() const noexcept {
         return columns_;
     }

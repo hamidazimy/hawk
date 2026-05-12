@@ -55,6 +55,22 @@ bool expand_if_range(std::string_view token, std::vector<std::string>& out) {
     return true;
 }
 
+std::vector<std::string> parse_select_column_list(std::string_view args_line) {
+    std::string normalised{args_line};
+    std::replace(normalised.begin(), normalised.end(), ',', ' ');
+    auto tokens = utils::tokenize(normalised);
+
+    std::vector<std::string> cols;
+    cols.reserve(tokens.size());
+
+    for (auto token : tokens) {
+        if (!expand_if_range(token, cols)) {
+            cols.emplace_back(hawk::utils::trim(token));
+        }
+    }
+    return cols;
+}
+
 LibCommand set_name(std::string_view args_line) {
     auto args = utils::tokenize(args_line);
     if (args.size() != 2) {
@@ -164,32 +180,37 @@ LibCommand set      (std::string_view args_line) {
 }
 
 LibCommand select   (std::string_view args_line) {
-    if (args_line.empty()) {
-        throw std::invalid_argument{
-            "select requires at least one column.\n"
-            "Usage: select <col1>,<col2>,... or select $col2:5"
-        };
-    }
-
-    std::string normalised{args_line};
-    std::replace(normalised.begin(), normalised.end(), ',', ' ');
-    auto tokens = utils::tokenize(normalised);
-
-    std::vector<std::string> cols;
-    cols.reserve(tokens.size());
-
-    for (auto token : tokens) {
-        if (!expand_if_range(token, cols)) {
-            cols.emplace_back(hawk::utils::trim(token));
-        }
-    }
-
+    auto cols = parse_select_column_list(args_line);
     if (cols.empty()) {
         throw std::invalid_argument{
-            "select requires at least one column."
+            "select requires at least one column.\n"
+            "Usage: select <col1>,<col2>,... $colX $colN:M"
         };
     }
     return SelectCommand{std::move(cols)};
+}
+
+LibCommand select_add(std::string_view args_line) {
+
+    auto cols = parse_select_column_list(args_line);
+    if (cols.empty()) {
+        throw std::invalid_argument{
+            "select+ requires at least one column.\n"
+            "Usage: select+ <col1>,<col2>,... $colX $colN:M"
+        };
+    }
+    return SelectAddCommand{std::move(cols)};
+}
+
+LibCommand select_rem(std::string_view args_line) {
+    auto cols = parse_select_column_list(args_line);
+    if (cols.empty()) {
+        throw std::invalid_argument{
+            "select- requires at least one column.\n"
+            "Usage: select- <col1>,<col2>,... $colX $colN:M"
+        };
+    }
+    return DeselectCommand{std::move(cols)};
 }
 
 LibCommand count    (std::string_view args_line) {

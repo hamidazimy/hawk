@@ -8,7 +8,7 @@
 
 namespace hawk::cli {
 
-inline const std::array<LibCommandInfo, 9> lib_command_table{{
+inline const std::array<LibCommandInfo, 11> lib_command_table{{
     {
         "columns",
         "",
@@ -32,7 +32,7 @@ inline const std::array<LibCommandInfo, 9> lib_command_table{{
     },
     {
         "select",
-        "select <column_1>,..,<column_n> $colX $colN:M",
+        "<column_1>,..,<column_n> $colX $colN:M",
         "Select columns to display",
         "Restrict displayed (and exported) columns to the specified list.\n"
         "  Column names are comma-separated.\n\n"
@@ -40,6 +40,29 @@ inline const std::array<LibCommandInfo, 9> lib_command_table{{
         "  select timestamp,event_id,message,$col7\n"
         "  select $col1,$col3 $col5:8",
         parsers::select
+    },
+    {
+        "select+",
+        "<column_1>,..,<column_n> $colX $colN:M",
+        "Add columns to the current projection",
+        "Append columns to the displayed (and projected export) set without removing\n"
+        "  columns already selected. Duplicates are ignored. Same column syntax as select.\n\n"
+        "Examples:\n"
+        "  select+ message\n"
+        "  select+ $col3,$col4",
+        parsers::select_add
+    },
+    {
+        "select-",
+        "<column_1>,..,<column_n> $colX $colN:M",
+        "Drop columns from the current projection",
+        "Drop the listed columns from the current selection. Unknown schema names are an error;\n"
+        "  dropping a column that is not currently selected is a no-op for that name.\n"
+        "  Cannot drop every column — leave at least one, or use 'select' to replace the set.\n\n"
+        "Examples:\n"
+        "  select- internal_debug_field\n"
+        "  select- $col2 $col5:7",
+        parsers::select_rem
     },
     {
         "count",

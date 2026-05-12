@@ -50,6 +50,14 @@ struct SelectCommand {
     std::vector<std::string> columns;
 };
 
+struct SelectAddCommand {
+    std::vector<std::string> columns;
+};
+
+struct DeselectCommand {
+    std::vector<std::string> columns;
+};
+
 struct CountCommand {
 };
 
@@ -85,6 +93,8 @@ using LibCommand = std::variant<
     SetColumnNameCommand,
     SetColumnTypeCommand,
     SelectCommand,
+    SelectAddCommand,
+    DeselectCommand,
     CountCommand,
     PeekCommand,
     HeadCommand,

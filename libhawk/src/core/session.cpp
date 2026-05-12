@@ -82,6 +82,27 @@ CommandResult Session::execute(const LibCommand& command) {
 
 // --- Command implementations ---
 
+namespace {
+// --- Internal helpers ---
+
+std::optional<std::string> resolve_columns(
+    const Schema& schema,
+    const std::vector<std::string>& names,
+    std::vector<ColumnIndex>& out)
+{
+    out.reserve(names.size());
+    for (const auto& name : names) {
+        auto index = schema.find_column(name);
+        if (!index.has_value()) {
+            return std::format("Unknown column: {}", name);
+        }
+        out.push_back(*index);
+    }
+    return std::nullopt;
+}
+
+} // namespace
+
 CommandResult Session::execute_impl(const RowsCommand&) {
     auto count = current_view_.size();
     std::vector<Row> rows;
@@ -141,18 +162,35 @@ CommandResult Session::execute_impl(const SetColumnTypeCommand& cmd) {
 }
 
 CommandResult Session::execute_impl(const SelectCommand& cmd) {
-    std::vector<ColumnIndex> columns;
-    for (const auto& column_name : cmd.columns) {
-        auto index = schema_.find_column(column_name);
-        if (!index.has_value()) {
-            return CommandResult::err(std::format(
-                "Unknown column: {}",
-                column_name
-            ));
-        }
-        columns.push_back(*index);
+    std::vector<ColumnIndex> indices;
+    if (auto err = resolve_columns(schema_, cmd.columns, indices)) {
+        return CommandResult::err(*err);
     }
-    current_projection_.select(columns);
+    current_projection_.select(std::move(indices));
+    return CommandResult::ok();
+}
+
+CommandResult Session::execute_impl(const SelectAddCommand& cmd) {
+    std::vector<ColumnIndex> indices;
+    if (auto err = resolve_columns(schema_, cmd.columns, indices)) {
+        return CommandResult::err(*err);
+    }
+    current_projection_.add(indices);
+    return CommandResult::ok();
+}
+
+CommandResult Session::execute_impl(const DeselectCommand& cmd) {
+    std::vector<ColumnIndex> indices;
+    if (auto err = resolve_columns(schema_, cmd.columns, indices)) {
+        return CommandResult::err(*err);
+    }
+    if (current_projection_.size() - indices.size() < 1) {
+        return CommandResult::err(
+            "Cannot remove all columns — at least one must remain. "
+            "Use 'select' to choose a new set."
+        );
+    }
+    current_projection_.drop(indices);
     return CommandResult::ok();
 }
 

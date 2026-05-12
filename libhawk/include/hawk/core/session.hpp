@@ -59,6 +59,8 @@ private:
     CommandResult execute_impl(const SetColumnNameCommand&);
     CommandResult execute_impl(const SetColumnTypeCommand&);
     CommandResult execute_impl(const SelectCommand&);
+    CommandResult execute_impl(const SelectAddCommand&);
+    CommandResult execute_impl(const DeselectCommand&);
     CommandResult execute_impl(const PeekCommand&);
     CommandResult execute_impl(const HeadCommand&);
     CommandResult execute_impl(const TailCommand&);
