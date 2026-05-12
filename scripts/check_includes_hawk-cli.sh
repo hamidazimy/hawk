@@ -1,6 +1,7 @@
 #!/bin/bash
 
-find hawk-cli \( -name "*.cpp" -o -name "*.hpp" \) | \
+git diff --staged --name-only --diff-filter=ACMR | \
+grep -E '^hawk-cli/.*\.(cpp|hpp)$' | \
 while read src; do \
     output=$(iwyu \
         -std=c++20 \

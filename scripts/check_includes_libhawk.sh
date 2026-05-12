@@ -1,8 +1,8 @@
 #!/bin/bash
 
-find libhawk \( -name "*.cpp" -o -name "*.hpp" \) \
-    ! -name "hawk.hpp" \
-    ! -name "file_mapping_windows.cpp" | \
+git diff --staged --name-only --diff-filter=ACMR | \
+grep -E '^libhawk/.*\.(cpp|hpp)$' | \
+grep -vE '(^|/)(hawk\.hpp|file_mapping_windows\.cpp)$' | \
 while read src; do \
     output=$(iwyu \
         -std=c++20 \
