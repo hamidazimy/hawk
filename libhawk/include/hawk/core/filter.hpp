@@ -7,6 +7,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <variant>
 
 namespace hawk { class Row; }
 namespace hawk { enum class ColumnType; }
@@ -32,7 +33,7 @@ struct FilterPredicate {
     double                      rhs_float = 0.0;    // valid when column_type == Float
     std::int64_t                rhs_ticks = 0;      // valid when column_type == DateTime
     std::optional<std::string>  datetime_pattern;   // set when column_type == DateTime
-    RecordCount                 skipped = 0;        // rows where the field could not be parsed
+    mutable RecordCount         skipped = 0;        // rows where the field could not be parsed
 
     FilterPredicate(
         ColumnIndex                 col,
@@ -42,7 +43,7 @@ struct FilterPredicate {
         std::optional<std::string>  dt_pattern = std::nullopt
     );
 
-    bool operator()(const Row& row);
+    bool operator()(const Row& row) const;
 
 private:
     bool compare_numeric(std::int64_t lhs, std::int64_t rhs) const;
@@ -55,6 +56,8 @@ struct RowSearchPredicate {
     RecordCount skipped = 0; // unused but kept parallel with FilterPredicate
     bool operator()(std::string_view raw_record) const;
 };
+
+using FilterPredicateVariant = std::variant<FilterPredicate, RowSearchPredicate>;
 
 } // namespace hawk
 

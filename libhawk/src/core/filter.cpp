@@ -37,7 +37,7 @@ FilterPredicate::FilterPredicate(
     }
 }
 
-bool FilterPredicate::operator()(const Row& row) {
+bool FilterPredicate::operator()(const Row& row) const {
     auto lhs = row.get(column_index);
     if (op == FilterOp::HAS) {
         if (column_type != ColumnType::String) {

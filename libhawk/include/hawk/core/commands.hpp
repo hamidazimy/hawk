@@ -75,14 +75,19 @@ struct TailCommand {
     explicit TailCommand(RecordCount count) : max_records(count) {}
 };
 
-struct FilterCommand {
-    std::string column;         // empty when row_search is true
-    bool row_search = false;    // true when target is $row
-    hawk::FilterOp op;
+struct FilterArgs {
+    std::string column;                // empty when row_search is true
+    bool        row_search = false;    // true when target is $row
+    FilterOp    op;
     std::string value;
-    explicit FilterCommand(std::string column, bool row_search, hawk::FilterOp op, std::string value)
+
+    FilterArgs(std::string column, bool row_search, hawk::FilterOp op, std::string value)
         : column(std::move(column)), row_search(row_search), op(op), value(std::move(value)) {}
 };
+
+struct FilterCommand        : FilterArgs { using FilterArgs::FilterArgs; };
+struct FilterExpandCommand  : FilterArgs { using FilterArgs::FilterArgs; };
+struct FilterExcludeCommand : FilterArgs { using FilterArgs::FilterArgs; };
 
 struct ResetViewCommand {
 };
@@ -100,6 +105,8 @@ using LibCommand = std::variant<
     HeadCommand,
     TailCommand,
     FilterCommand,
+    FilterExpandCommand,
+    FilterExcludeCommand,
     ResetViewCommand
 >;
 

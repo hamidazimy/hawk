@@ -20,6 +20,8 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <type_traits>
+#include <unordered_set>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -80,10 +82,9 @@ CommandResult Session::execute(const LibCommand& command) {
     return result;
 }
 
-// --- Command implementations ---
+// --- Internal helpers ---
 
 namespace {
-// --- Internal helpers ---
 
 std::optional<std::string> resolve_columns(
     const Schema& schema,
@@ -101,7 +102,97 @@ std::optional<std::string> resolve_columns(
     return std::nullopt;
 }
 
+// TODO(C++23): replace with std::expected<FilterPredicateVariant, std::string>
+struct PrepareFilterResult {
+    std::optional<FilterPredicateVariant> pred;  // set on success
+    std::optional<std::string>            error; // set on failure
+
+    static PrepareFilterResult ok(FilterPredicateVariant p) {
+        return {std::move(p), std::nullopt};
+    }
+    static PrepareFilterResult err(std::string e) {
+        return {std::nullopt, std::move(e)};
+    }
+};
+
+PrepareFilterResult prepare_filter(
+    const Schema&    schema,
+    const FilterArgs& args)
+{
+    if (args.row_search) {
+        if (args.op != FilterOp::HAS) {
+            return PrepareFilterResult::err("$row only supports the 'has' operator");
+        }
+        return PrepareFilterResult::ok(RowSearchPredicate{args.value});
+    }
+
+    auto column_index = schema.find_column(args.column);
+    if (!column_index) {
+        return PrepareFilterResult::err(std::format("Unknown column: {}", args.column));
+    }
+
+    const ColumnType column_type = schema.column_type(*column_index);
+
+    if (args.op == FilterOp::HAS && column_type != ColumnType::String) {
+        return PrepareFilterResult::err(std::format(
+            "Operator 'has' is only valid for string columns, column '{}' is {}",
+            args.column, column_type_name(column_type)
+        ));
+    }
+
+    std::optional<std::string> datetime_pattern;
+    if (column_type == ColumnType::DateTime) {
+        const auto& col_schema = schema.column(*column_index);
+        if (!col_schema.datetime_pattern.has_value()) {
+            return PrepareFilterResult::err(std::format(
+                "Column '{}' has no datetime pattern — cannot filter", args.column
+            ));
+        }
+        datetime_pattern = col_schema.datetime_pattern;
+        if (!utils::parse_datetime(args.value, *datetime_pattern)) {
+            return PrepareFilterResult::err(std::format(
+                "Filter value '{}' cannot be parsed as datetime pattern '{}' for column '{}'",
+                args.value, *datetime_pattern, args.column
+            ));
+        }
+    }
+
+    if (column_type == ColumnType::Integer) {
+        std::int64_t dummy;
+        if (!utils::parse_int(args.value, dummy)) {
+            return PrepareFilterResult::err(std::format(
+                "Filter value '{}' cannot be parsed as {} for column '{}'",
+                args.value, column_type_name(column_type), args.column
+            ));
+        }
+    }
+
+    if (column_type == ColumnType::Float) {
+        double dummy;
+        if (!utils::parse_double(args.value, dummy)) {
+            return PrepareFilterResult::err(std::format(
+                "Filter value '{}' cannot be parsed as {} for column '{}'",
+                args.value, column_type_name(column_type), args.column
+            ));
+        }
+    }
+
+    return PrepareFilterResult::ok(FilterPredicate{*column_index, column_type, args.op, args.value, datetime_pattern});
+}
+
 } // namespace
+
+bool Session::apply_predicate(const FilterPredicateVariant& pred_variant, RecordIndex idx) {
+    return std::visit([&](auto& pred) {
+        if constexpr (std::is_same_v<std::decay_t<decltype(pred)>, RowSearchPredicate>) {
+            return pred(raw_record_from_file(idx));
+        } else {
+            return pred(make_row_from_file(idx));
+        }
+    }, pred_variant);
+}
+
+// --- Command implementations ---
 
 CommandResult Session::execute_impl(const RowsCommand&) {
     auto count = current_view_.size();
@@ -251,97 +342,93 @@ CommandResult Session::execute_impl(const TailCommand& cmd) {
 }
 
 CommandResult Session::execute_impl(const FilterCommand& cmd) {
-    if (cmd.row_search) {
-        if (cmd.op != FilterOp::HAS) {
-            return CommandResult::err("$row only supports the 'has' operator");
-        }
-        RowSearchPredicate predicate{cmd.value};
-        current_view_ = current_view_.filter(
-            [this, &predicate](RecordIndex row_index) {
-                return predicate(raw_record_from_file(row_index));
-            }
-        );
-        return CommandResult::ok(FilterResult{current_view_.size(), 0});
-    }
-
-    auto column_index = schema_.find_column(cmd.column);
-    if (!column_index) {
-        return CommandResult::err(std::format(
-            "Unknown column: {}",
-            cmd.column
-        ));
-    }
-
-    const ColumnType column_type = schema_.column_type(*column_index);
-
-    // Validate operator is compatible with column type before scanning.
-    if (cmd.op == FilterOp::HAS && column_type != ColumnType::String) {
-        return CommandResult::err(std::format(
-            "Operator 'has' is only valid for string columns, column '{}' is {}",
-            cmd.column, column_type_name(column_type)
-        ));
-    }
-
-    // Validate RHS and resolve datetime pattern before scanning.
-    std::optional<std::string> datetime_pattern;
-    if (column_type == ColumnType::DateTime) {
-        const auto& col_schema = schema_.column(*column_index);
-        if (!col_schema.datetime_pattern.has_value()) {
-            return CommandResult::err(std::format(
-                "Column '{}' has no datetime pattern — cannot filter",
-                cmd.column
-            ));
-        }
-        datetime_pattern = col_schema.datetime_pattern;
-        if (!utils::parse_datetime(cmd.value, *datetime_pattern)) {
-            return CommandResult::err(std::format(
-                "Filter value '{}' cannot be parsed "
-                "as datetime pattern '{}' for column '{}'",
-                cmd.value, *datetime_pattern, cmd.column
-            ));
-        }
-    }
-
-    // Validate RHS is parseable as the column's declared type before scanning.
-    if (column_type == ColumnType::Integer) {
-        std::int64_t dummy;
-        if (!utils::parse_int(cmd.value, dummy)) {
-            return CommandResult::err(std::format(
-                "Filter value '{}' cannot be parsed as {} for column '{}'",
-                cmd.value, column_type_name(column_type), cmd.column
-            ));
-        }
-    }
-    if (column_type == ColumnType::Float) {
-        double dummy;
-        if (!utils::parse_double(cmd.value, dummy)) {
-            return CommandResult::err(std::format(
-                "Filter value '{}' cannot be parsed as {} for column '{}'",
-                cmd.value, column_type_name(column_type), cmd.column
-            ));
-        }
-    }
-
-    FilterPredicate predicate{*column_index, column_type, cmd.op, cmd.value, datetime_pattern};
+    auto filter_result = prepare_filter(schema_, cmd);
+    if (filter_result.error) return CommandResult::err(*filter_result.error);
+    auto& pred = *filter_result.pred;
 
     current_view_ = current_view_.filter(
-        [this, &predicate](RecordIndex row_index) {
-            return predicate(make_row_from_file(row_index));
+        [this, &pred](RecordIndex idx) {
+            return apply_predicate(pred, idx);
         }
     );
 
-    auto result = CommandResult::ok(FilterResult{
-        current_view_.size(),
-        predicate.skipped
-    });
+    auto result = CommandResult::ok(FilterResult{current_view_.size(), 0});
+    if (auto* col_pred = std::get_if<FilterPredicate>(&pred)) {
+        result.payload = FilterResult{current_view_.size(), col_pred->skipped};
+        if (col_pred->skipped > 0) {
+            result.warnings.push_back(std::format(
+                "{} row(s) skipped: field could not be parsed as {}",
+                col_pred->skipped, column_type_name(col_pred->column_type)
+            ));
+        }
+    }
+    return result;
+}
 
-    if (predicate.skipped > 0) {
-        result.warnings.push_back(std::format(
-            "{} row(s) skipped: field could not be parsed as {}",
-            predicate.skipped, column_type_name(column_type)
-        ));
+CommandResult Session::execute_impl(const FilterExpandCommand& cmd) {
+    auto filter_result = prepare_filter(schema_, cmd);
+    if (filter_result.error) return CommandResult::err(*filter_result.error);
+    auto& pred = *filter_result.pred;
+
+    // Build O(1) membership set from current view
+    std::unordered_set<RecordIndex> existing;
+    existing.reserve(current_view_.size());
+    current_view_.for_each([&](RecordIndex idx) { existing.insert(idx); });
+
+    // Scan full file for matching rows not already in the view
+    std::vector<RecordIndex> new_indices;
+    for (RecordIndex idx = 0; idx < row_count(); ++idx) {
+    if (!existing.contains(idx) && apply_predicate(pred, idx)) {
+            new_indices.push_back(idx);
+        }
     }
 
+    if (!new_indices.empty()) {
+        // Merge current view and new matches, then sort to file order.
+        // TODO: When a 'sort' command is added, re-apply the active sort order
+        // instead of restoring file order here.
+        std::vector<RecordIndex> merged;
+        merged.reserve(current_view_.size() + new_indices.size());
+        current_view_.for_each([&](RecordIndex idx) { merged.push_back(idx); });
+        merged.insert(merged.end(), new_indices.begin(), new_indices.end());
+        std::sort(merged.begin(), merged.end());
+        current_view_ = View(std::move(merged), row_count());
+    }
+
+    auto result = CommandResult::ok(FilterResult{current_view_.size(), 0});
+    if (auto* col_pred = std::get_if<FilterPredicate>(&pred)) {
+        result.payload = FilterResult{current_view_.size(), col_pred->skipped};
+        if (col_pred->skipped > 0) {
+            result.warnings.push_back(std::format(
+                "{} row(s) skipped: field could not be parsed as {}",
+                col_pred->skipped, column_type_name(col_pred->column_type)
+            ));
+        }
+    }
+    return result;
+}
+
+CommandResult Session::execute_impl(const FilterExcludeCommand& cmd) {
+    auto filter_result = prepare_filter(schema_, cmd);
+    if (filter_result.error) return CommandResult::err(*filter_result.error);
+    auto& pred = *filter_result.pred;
+
+    current_view_ = current_view_.filter(
+        [this, &pred](RecordIndex idx) {
+            return !apply_predicate(pred, idx);
+        }
+    );
+
+    auto result = CommandResult::ok(FilterResult{current_view_.size(), 0});
+    if (auto* col_pred = std::get_if<FilterPredicate>(&pred)) {
+        result.payload = FilterResult{current_view_.size(), col_pred->skipped};
+        if (col_pred->skipped > 0) {
+            result.warnings.push_back(std::format(
+                "{} row(s) skipped: field could not be parsed as {}",
+                col_pred->skipped, column_type_name(col_pred->column_type)
+            ));
+        }
+    }
     return result;
 }
 

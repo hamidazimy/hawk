@@ -7,6 +7,7 @@
 #include <hawk/core/record_parser.hpp>
 #include <hawk/core/schema.hpp>
 #include <hawk/core/view.hpp>
+#include <hawk/core/filter.hpp>
 #include <hawk/core/projection.hpp>
 #include <hawk/core/commands.hpp>
 
@@ -65,7 +66,12 @@ private:
     CommandResult execute_impl(const HeadCommand&);
     CommandResult execute_impl(const TailCommand&);
     CommandResult execute_impl(const FilterCommand&);
+    CommandResult execute_impl(const FilterExpandCommand&);
+    CommandResult execute_impl(const FilterExcludeCommand&);
     CommandResult execute_impl(const ResetViewCommand&);
+
+    // -- Internal helper methods for command execution --
+    bool apply_predicate(const FilterPredicateVariant&, RecordIndex);
 
 private:
     const SessionConfig config_;

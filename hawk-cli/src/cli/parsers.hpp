@@ -21,6 +21,8 @@ LibCommand peek     (std::string_view);
 LibCommand head     (std::string_view);
 LibCommand tail     (std::string_view);
 LibCommand filter   (std::string_view);
+LibCommand filter_exp(std::string_view);
+LibCommand filter_exc(std::string_view);
 LibCommand reset    (std::string_view);
 
 // Cli command parsers

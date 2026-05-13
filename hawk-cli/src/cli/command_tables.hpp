@@ -8,7 +8,7 @@
 
 namespace hawk::cli {
 
-inline const std::array<LibCommandInfo, 11> lib_command_table{{
+inline const std::array<LibCommandInfo, 13> lib_command_table{{
     {
         "columns",
         "",
@@ -119,6 +119,37 @@ inline const std::array<LibCommandInfo, 11> lib_command_table{{
         "  filter message has error\n"
         "  filter $row has \"login failed\"",
         parsers::filter
+    },
+    {
+        "filter+",
+        "<column> <op> <value> | $row <op> <value>",
+        "Expand the current view with rows matching the predicate",
+        "Union operation: scan the full file and add rows matching the predicate\n"
+        "that are not already in the current view. The view grows.\n\n"
+        "Same operators and $row syntax as 'filter'.\n"
+        "Type-strict: the value must be parseable as the column's declared type.\n\n"
+        "The result is always sorted to file order.\n\n"
+        "Note: scans the full file regardless of current view size — may be slow\n"
+        "on very large files.\n\n"
+        "Examples:\n"
+        "  filter  event_id == 4624\n"
+        "  filter+ event_id == 4625\n"
+        "  filter+ event_id == 4648\n"
+        "  filter+ $row has \"explicit credential\"",
+        parsers::filter_exp
+    },
+    {
+        "filter-",
+        "<column> <op> <value> | $row <op> <value>",
+        "Remove rows matching the predicate from the current view",
+        "Subtraction operation: remove rows from the current view that match\n"
+        "the predicate. The view shrinks. Rows not in the view are unaffected.\n\n"
+        "Same operators and $row syntax as 'filter'.\n"
+        "Type-strict: the value must be parseable as the column's declared type.\n\n"
+        "Examples:\n"
+        "  filter- source_ip == 10.0.0.1\n"
+        "  filter- $row has \"heartbeat\"",
+        parsers::filter_exc
     },
     {
         "reset",

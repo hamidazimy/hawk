@@ -138,6 +138,52 @@ LibCommand set_type(std::string_view args_line) {
     return SetColumnTypeCommand{column, type, datetime_pattern};
 }
 
+hawk::FilterArgs parse_filter_args(std::string_view args_line) {
+    auto args = utils::tokenize(args_line);
+    if (args.size() != 3) {
+        throw std::invalid_argument{
+            std::format("Expected <column> <op> <value>, got: {}", args_line)
+        };
+    }
+    hawk::FilterOp op;
+    if (args[1] == "has") {
+        op = hawk::FilterOp::HAS;
+    } else if (args[1] == "==") {
+        op = hawk::FilterOp::EQ;
+    } else if (args[1] == "!=") {
+        op = hawk::FilterOp::NE;
+    } else if (args[1] == ">") {
+        op = hawk::FilterOp::GT;
+    } else if (args[1] == "<") {
+        op = hawk::FilterOp::LT;
+    } else if (args[1] == ">=") {
+        op = hawk::FilterOp::GE;
+    } else if (args[1] == "<=") {
+        op = hawk::FilterOp::LE;
+    } else {
+        throw std::invalid_argument{
+            std::format("Invalid operator: {}", args[1])
+        };
+    }
+    if (args[0] == "$row" && op != hawk::FilterOp::HAS) {
+        throw std::invalid_argument{
+            std::format("Only 'has' operator is supported for $row searches. Got: {}", args[1])
+        };
+    }
+    return hawk::FilterArgs{std::string(args[0]), args[0] == "$row", op, std::string(args[2])};
+}
+
+template <typename FltrCmd>
+FltrCmd parse_filter_command(std::string_view args_line) {
+    auto fltrargs = parse_filter_args(args_line);
+    return FltrCmd{
+        std::move(fltrargs.column),
+        fltrargs.row_search,
+        fltrargs.op,
+        std::move(fltrargs.value)
+    };
+}
+
 } // namespace
 
 LibCommand columns  (std::string_view args_line) {
@@ -264,39 +310,15 @@ LibCommand tail     (std::string_view args_line) {
 }
 
 LibCommand filter   (std::string_view args_line) {
-    auto args = utils::tokenize(args_line);
-    if (args.size() != 3) {
-        throw std::invalid_argument{
-            std::format("Invalid arguments for filter command: {}", args_line)
-        };
-    }
-    hawk::FilterOp op;
-    if (args[1] == "has") {
-        op = hawk::FilterOp::HAS;
-    } else if (args[1] == "==") {
-        op = hawk::FilterOp::EQ;
-    } else if (args[1] == "!=") {
-        op = hawk::FilterOp::NE;
-    } else if (args[1] == ">") {
-        op = hawk::FilterOp::GT;
-    } else if (args[1] == "<") {
-        op = hawk::FilterOp::LT;
-    } else if (args[1] == ">=") {
-        op = hawk::FilterOp::GE;
-    } else if (args[1] == "<=") {
-        op = hawk::FilterOp::LE;
-    } else {
-        throw std::invalid_argument{
-            std::format("Invalid operator in filter command: {}", args[1])
-        };
-    }
-    if (args[0] == "$row" && op != hawk::FilterOp::HAS) {
-        throw std::invalid_argument{
-            std::format("Only 'has' operator is supported for $row searches. Got: {}", args[1])
-        };
-    }
+    return parse_filter_command<FilterCommand>(args_line);
+}
 
-    return FilterCommand{std::string(args[0]), args[0] == "$row", op, std::string(args[2])};
+LibCommand filter_exp(std::string_view args_line) {
+    return parse_filter_command<FilterExpandCommand>(args_line);
+}
+
+LibCommand filter_exc(std::string_view args_line) {
+    return parse_filter_command<FilterExcludeCommand>(args_line);
 }
 
 LibCommand reset    (std::string_view args_line) {
