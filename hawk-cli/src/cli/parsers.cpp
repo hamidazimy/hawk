@@ -321,6 +321,36 @@ LibCommand filter_exc(std::string_view args_line) {
     return parse_filter_command<FilterExcludeCommand>(args_line);
 }
 
+LibCommand sort     (std::string_view args_line) {
+    auto args = utils::tokenize(args_line);
+    if (args.empty() || args.size() > 2) {
+        throw std::invalid_argument{
+            "Usage: sort <column> [--desc|-r]"
+        };
+    }
+
+    bool is_desc = false;
+    std::string column;
+
+    for (const auto& arg : args) {
+        if (arg == "--desc" || arg == "-r") {
+            is_desc = true;
+        } else if (column.empty()) {
+            column = arg;
+        } else {
+            throw std::invalid_argument{
+                std::format("Unexpected argument for sort command: {}", arg)
+            };
+        }
+    }
+
+    if (column.empty()) {
+        throw std::invalid_argument{"sort requires a column name."};
+    }
+
+    return SortCommand{std::move(column), is_desc};
+}
+
 LibCommand reset    (std::string_view args_line) {
     if (!args_line.empty()) {
         throw std::invalid_argument{

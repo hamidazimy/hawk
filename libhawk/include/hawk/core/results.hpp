@@ -31,6 +31,13 @@ struct FilterResult {
     RecordCount skipped;   // 0 if clean
 };
 
+struct SortResult {
+    RecordCount row_count;
+    RecordCount unparseable_count;
+    std::string column;
+    bool        is_desc;
+};
+
 struct ColumnsResult {
     std::vector<ColumnSchema> columns;
 };
@@ -39,6 +46,7 @@ using ResultPayload = std::variant<
     RowsResult,
     CountResult,
     FilterResult,
+    SortResult,
     ColumnsResult
 >;
 

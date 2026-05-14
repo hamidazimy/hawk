@@ -12,12 +12,18 @@
 #include <hawk/core/commands.hpp>
 
 #include <memory>
+#include <optional>
 #include <string_view>
 
 namespace hawk { class Row; }
 namespace hawk { struct CommandResult; }
 
 namespace hawk {
+
+struct SortKey {
+    ColumnIndex col_index;
+    bool        is_desc = false;
+};
 
 class Session {
     friend class SessionBuilder;
@@ -68,10 +74,12 @@ private:
     CommandResult execute_impl(const FilterCommand&);
     CommandResult execute_impl(const FilterExpandCommand&);
     CommandResult execute_impl(const FilterExcludeCommand&);
+    CommandResult execute_impl(const SortCommand&);
     CommandResult execute_impl(const ResetViewCommand&);
 
     // -- Internal helper methods for command execution --
     bool apply_predicate(const FilterPredicateVariant&, RecordIndex);
+    RecordCount apply_sort(const SortKey& key);
 
 private:
     const SessionConfig config_;
@@ -80,6 +88,7 @@ private:
     Schema schema_;
     View current_view_;
     Projection current_projection_;
+    std::optional<SortKey> active_sort_;
 };
 
 } // namespace hawk

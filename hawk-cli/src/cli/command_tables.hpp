@@ -8,7 +8,7 @@
 
 namespace hawk::cli {
 
-inline const std::array<LibCommandInfo, 13> lib_command_table{{
+inline const std::array<LibCommandInfo, 14> lib_command_table{{
     {
         "columns",
         "",
@@ -150,6 +150,20 @@ inline const std::array<LibCommandInfo, 13> lib_command_table{{
         "  filter- source_ip == 10.0.0.1\n"
         "  filter- $row has \"heartbeat\"",
         parsers::filter_exc
+    },
+    {
+        "sort",
+        "<column> [--desc|-r]",
+        "Sort the current view by a column",
+        "Sorts the current view by the specified column in ascending order by default.\n"
+        "Use --desc or -r to sort in descending order.\n"
+        "Sort is stable — equal values preserve their current relative order.\n"
+        "Unparseable fields sort last (ascending) or first (descending).\n\n"
+        "Examples:\n"
+        "  sort timestamp\n"
+        "  sort event_id --desc\n"
+        "  sort $col6 -r",
+        parsers::sort
     },
     {
         "reset",

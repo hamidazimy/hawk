@@ -24,6 +24,7 @@ public:
     }
 
     void reset() {
+        columns_.resize(total_columns_);
         std::iota(columns_.begin(), columns_.end(), 0);
     }
 

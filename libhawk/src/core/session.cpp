@@ -15,6 +15,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <compare>
 #include <cstdint>
 #include <format>
 #include <optional>
@@ -192,6 +193,83 @@ bool Session::apply_predicate(const FilterPredicateVariant& pred_variant, Record
     }, pred_variant);
 }
 
+RecordCount Session::apply_sort(const SortKey& key) {
+    const auto& col_schema = schema_.column(key.col_index);
+    const ColumnType col_type = col_schema.type;
+
+    // Comparable key type: monostate means unparseable
+    using Key = std::variant<std::monostate, int64_t, double, std::string>;
+
+    // Build key-index pairs — O(n) parses
+    std::vector<std::pair<Key, RecordIndex>> keyed;
+    keyed.reserve(current_view_.size());
+
+    current_view_.for_each([&](RecordIndex idx) {
+        auto field = make_row_from_file(idx).get(key.col_index);
+        Key k;
+        switch (col_type) {
+            case ColumnType::Integer: {
+                int64_t v;
+                k = utils::parse_int(field, v) ? Key{v} : Key{std::monostate{}};
+                break;
+            }
+            case ColumnType::Float: {
+                double v;
+                k = utils::parse_double(field, v) ? Key{v} : Key{std::monostate{}};
+                break;
+            }
+            case ColumnType::DateTime: {
+                if (col_schema.datetime_pattern) {
+                    auto v = utils::parse_datetime(field, *col_schema.datetime_pattern);
+                    k = v ? Key{static_cast<int64_t>(v->time_since_epoch().count())} : Key{std::monostate{}};
+                } else {
+                    k = std::monostate{};
+                }
+                break;
+            }
+            case ColumnType::String: {
+                k = std::string(field);
+                break;
+            }
+        }
+        keyed.emplace_back(std::move(k), idx);
+    });
+
+    // Comparator — monostate (unparseable) always sorts last in asc, first in desc
+    auto compare = [&](const auto& a, const auto& b) {
+        const auto& ka = a.first;
+        const auto& kb = b.first;
+
+        // monostate handling
+        bool a_null = std::holds_alternative<std::monostate>(ka);
+        bool b_null = std::holds_alternative<std::monostate>(kb);
+        if (a_null && b_null) return false;
+        if (a_null) return key.is_desc;  // nulls last in asc, first in desc
+        if (b_null) return !key.is_desc;
+
+        // Both valid — compare by value
+        return std::visit([&](const auto& va) -> bool {
+            using T = std::decay_t<decltype(va)>;
+            const auto& vb = std::get<T>(kb);
+            return key.is_desc ? va > vb : va < vb;
+        }, ka);
+    };
+
+    std::stable_sort(keyed.begin(), keyed.end(), compare);
+
+    // Extract reordered indices
+    std::vector<RecordIndex> sorted_indices;
+    sorted_indices.reserve(keyed.size());
+    RecordCount unparseable = 0;
+    for (auto& [k, idx] : keyed) {
+        if (std::holds_alternative<std::monostate>(k)) ++unparseable;
+        sorted_indices.push_back(idx);
+    }
+
+    current_view_ = View(std::move(sorted_indices), row_count());
+    return unparseable;
+}
+
 // --- Command implementations ---
 
 CommandResult Session::execute_impl(const RowsCommand&) {
@@ -248,6 +326,19 @@ CommandResult Session::execute_impl(const SetColumnTypeCommand& cmd) {
     // produces meaningful results is the analyst's responsibility.
     // Revisit if view invalidation on type change becomes necessary.
     schema_.set_column_type(*column_index, cmd.type, cmd.datetime_pattern);
+
+    // TODO: If the sorted column's type changes, the active sort order is now based on
+    // the old type interpretation and may be semantically wrong. Consider invalidating
+    // active_sort_ and warning the analyst when this occurs.
+    if (active_sort_ && active_sort_->col_index == *column_index) {
+        auto result = CommandResult::ok();
+        result.warnings.push_back(std::format(
+            "Column '{}' type changed while an active sort is applied on it. "
+            "The sort order may no longer be correct. Use 'sort' to re-apply.",
+            cmd.column
+        ));
+        return result;
+    }
 
     return CommandResult::ok();
 }
@@ -393,6 +484,10 @@ CommandResult Session::execute_impl(const FilterExpandCommand& cmd) {
         merged.insert(merged.end(), new_indices.begin(), new_indices.end());
         std::sort(merged.begin(), merged.end());
         current_view_ = View(std::move(merged), row_count());
+
+        if (active_sort_) {
+            apply_sort(*active_sort_); // re-apply active sort on top
+        }
     }
 
     auto result = CommandResult::ok(FilterResult{current_view_.size(), 0});
@@ -432,8 +527,27 @@ CommandResult Session::execute_impl(const FilterExcludeCommand& cmd) {
     return result;
 }
 
+CommandResult Session::execute_impl(const SortCommand& cmd) {
+    auto col_index = schema_.find_column(cmd.column);
+    if (!col_index) {
+        return CommandResult::err(std::format("Unknown column: {}", cmd.column));
+    }
+
+    auto unparseable = apply_sort(SortKey{*col_index, cmd.is_desc});
+    active_sort_ = SortKey{*col_index, cmd.is_desc};
+
+    return CommandResult::ok(SortResult{
+        current_view_.size(),
+        unparseable,
+        cmd.column,
+        cmd.is_desc
+    });
+}
+
 CommandResult Session::execute_impl(const ResetViewCommand&) {
     current_view_ = View::identity(row_count());
+    current_projection_.reset();
+    active_sort_ = std::nullopt;
     return CommandResult::ok();
 }
 

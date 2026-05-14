@@ -165,6 +165,18 @@ void render_impl(
     sout << cli::log_success("Matched: " + std::to_string(res.matched)) << std::endl;
 }
 
+void render_impl(
+    const hawk::SortResult& res,
+    const hawk::Schema&,
+    std::ostream& sout
+) {
+    sout << cli::log_success(std::format("Sorted {} row(s) by '{}' {}",
+        res.row_count,
+        res.column,
+        res.is_desc ? "descending" : "ascending"
+    )) << std::endl;
+}
+
 } // anonymous namespace
 
 void render_result(

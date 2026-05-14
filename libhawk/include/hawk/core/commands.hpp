@@ -89,6 +89,11 @@ struct FilterCommand        : FilterArgs { using FilterArgs::FilterArgs; };
 struct FilterExpandCommand  : FilterArgs { using FilterArgs::FilterArgs; };
 struct FilterExcludeCommand : FilterArgs { using FilterArgs::FilterArgs; };
 
+struct SortCommand {
+    std::string column;
+    bool        is_desc = false;
+};
+
 struct ResetViewCommand {
 };
 
@@ -107,6 +112,7 @@ using LibCommand = std::variant<
     FilterCommand,
     FilterExpandCommand,
     FilterExcludeCommand,
+    SortCommand,
     ResetViewCommand
 >;
 
