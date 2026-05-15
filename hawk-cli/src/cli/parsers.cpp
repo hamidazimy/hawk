@@ -226,6 +226,9 @@ LibCommand set      (std::string_view args_line) {
 }
 
 LibCommand select   (std::string_view args_line) {
+    if (hawk::utils::trim(args_line) == "*") {
+        return ResetCommand{.proj = true};
+    }
     auto cols = parse_select_column_list(args_line);
     if (cols.empty()) {
         throw std::invalid_argument{
@@ -310,6 +313,9 @@ LibCommand tail     (std::string_view args_line) {
 }
 
 LibCommand filter   (std::string_view args_line) {
+    if (hawk::utils::trim(args_line) == "*") {
+        return ResetCommand{.view = true};
+    }
     return parse_filter_command<FilterCommand>(args_line);
 }
 
@@ -327,6 +333,10 @@ LibCommand sort     (std::string_view args_line) {
         throw std::invalid_argument{
             "Usage: sort <column> [--desc|-r]"
         };
+    }
+
+    if (args.size() == 1 && args[0] == "--default") {
+        return ResetCommand{.sort = true};
     }
 
     bool is_desc = false;
@@ -386,12 +396,22 @@ LibCommand distinct (std::string_view args_line) {
 }
 
 LibCommand reset    (std::string_view args_line) {
-    if (!args_line.empty()) {
-        throw std::invalid_argument{
-            std::format("Invalid arguments in reset command: {}", args_line)
+    auto args = utils::tokenize(args_line);
+
+    if (args.empty()) {
+        return ResetCommand::all();
+    }
+
+    ResetCommand cmd;
+    for (const auto& arg : args) {
+        if      (arg == "--view") cmd.view = true;
+        else if (arg == "--proj") cmd.proj = true;
+        else if (arg == "--sort") cmd.sort = true;
+        else throw std::invalid_argument{
+            std::format("Unknown argument for reset command: {}", arg)
         };
     }
-    return ResetViewCommand{};
+    return cmd;
 }
 
 CliCommand eXport   (std::string_view args_line) {

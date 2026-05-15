@@ -37,6 +37,11 @@ public:
         return View(total_records);
     }
 
+    void reset() {
+        indices_.clear();
+        is_identity_ = true;
+    }
+
     RecordCount size() const noexcept {
         return is_identity_ ? total_records_ : indices_.size();
     }
@@ -70,6 +75,8 @@ public:
 
         return View(std::move(result), total_records_);
     }
+
+    void sort_to_file_order();
 
 private:
     std::vector<RecordIndex> indices_;

@@ -688,10 +688,18 @@ CommandResult Session::execute_impl(const DistinctCommand& cmd) {
     return result;
 }
 
-CommandResult Session::execute_impl(const ResetViewCommand&) {
-    current_view_ = View::identity(row_count());
-    current_projection_.reset();
-    active_sort_ = std::nullopt;
+CommandResult Session::execute_impl(const ResetCommand& cmd) {
+    if (cmd.view) {
+        current_view_.reset();
+        active_sort_  = std::nullopt;
+    }
+    if (cmd.proj) {
+        current_projection_.reset();
+    }
+    if (cmd.sort && !cmd.view) {
+        current_view_.sort_to_file_order();
+        active_sort_ = std::nullopt;
+    }
     return CommandResult::ok();
 }
 

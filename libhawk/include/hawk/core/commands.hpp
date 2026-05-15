@@ -100,7 +100,14 @@ struct DistinctCommand {
     bool        sort_desc     = false; // reverse sort order
 };
 
-struct ResetViewCommand {
+struct ResetCommand {
+    bool view = false;
+    bool proj = false;
+    bool sort = false;
+
+    static ResetCommand all() {
+        return {true, true, true};
+    }
 };
 
 using LibCommand = std::variant<
@@ -120,7 +127,7 @@ using LibCommand = std::variant<
     FilterExcludeCommand,
     SortCommand,
     DistinctCommand,
-    ResetViewCommand
+    ResetCommand
 >;
 
 } // namespace hawk

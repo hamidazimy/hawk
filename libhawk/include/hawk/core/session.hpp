@@ -76,7 +76,7 @@ private:
     CommandResult execute_impl(const FilterExcludeCommand&);
     CommandResult execute_impl(const SortCommand&);
     CommandResult execute_impl(const DistinctCommand&);
-    CommandResult execute_impl(const ResetViewCommand&);
+    CommandResult execute_impl(const ResetCommand&);
 
     // -- Internal helper methods for command execution --
     std::optional<ColumnIndex> find_column(std::string_view name) const;
