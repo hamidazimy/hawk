@@ -29,6 +29,7 @@ struct FilterPredicate {
     ColumnType                  column_type;
     FilterOp                    op;
     std::string                 rhs_str;
+    bool                        case_sensitive;
     std::int64_t                rhs_int   = 0;      // valid when column_type == Integer
     double                      rhs_float = 0.0;    // valid when column_type == Float
     std::int64_t                rhs_ticks = 0;      // valid when column_type == DateTime
@@ -40,6 +41,7 @@ struct FilterPredicate {
         ColumnType                  type,
         FilterOp                    op,
         std::string                 rhs,
+        bool                        case_sensitive,
         std::optional<std::string>  dt_pattern = std::nullopt
     );
 
@@ -53,6 +55,7 @@ private:
 
 struct RowSearchPredicate {
     std::string needle;
+    bool case_sensitive;
     RecordCount skipped = 0; // unused but kept parallel with FilterPredicate
     bool operator()(std::string_view raw_record) const;
 };

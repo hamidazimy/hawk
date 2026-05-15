@@ -79,6 +79,11 @@ Args parse_args(int argc, char* argv[]) {
                 continue;
             }
 
+            if (arg == "--ignore-case" || arg == "-i") {
+                args.ignore_case = true;
+                continue;
+            }
+
             // Unknown flag
             if (!arg.empty() && arg[0] == '-') {
                 throw std::invalid_argument("Unknown option: " + arg);
@@ -114,6 +119,7 @@ void print_help(const char* program_name) {
     std::cout << "  -h, --help              Show this help message\n";
     std::cout << "  -v, --version           Show version information\n";
     std::cout << "  --no-confirm            Skip analysis confirmation\n";
+    std::cout << "  -i, --ignore-case       Case-insensitive analysis\n";
     std::cout << "\n";
     std::cout << "File Analysis Overrides:\n";
     std::cout << "  --delimiter CHAR        Specify delimiter (e.g., ',' or '\\t')\n";

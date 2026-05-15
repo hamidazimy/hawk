@@ -6,6 +6,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include <utility>
 
@@ -24,7 +25,7 @@ public:
     ColumnType column_type(ColumnIndex index) const { return columns_[index].type; }
     bool is_nullable(ColumnIndex index) const { return columns_[index].nullable; }
 
-    std::optional<ColumnIndex> find_column(const std::string& name) const;
+    std::optional<ColumnIndex> find_column(std::string_view name, bool case_sensitive = true) const;
 
     void set_column_name(ColumnIndex index, std::string name);
 

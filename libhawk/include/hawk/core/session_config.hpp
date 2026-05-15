@@ -7,6 +7,7 @@ struct SessionConfig {
     bool use_crlf = false;
     char delimiter = ',';
     bool has_header = false;
+    bool case_sensitive = true;
 };
 
 } // namespace hawk

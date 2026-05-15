@@ -2,21 +2,23 @@
 
 #include <hawk/core/types.hpp>
 #include <hawk/core/column.hpp>
+#include <hawk/utils/utils.hpp>
 
 #include <exception>
 #include <optional>
 #include <string>
+#include <string_view>
 
 namespace hawk {
 
-std::optional<ColumnIndex> Schema::find_column(const std::string& name) const {
+std::optional<ColumnIndex> Schema::find_column(std::string_view name, bool case_sensitive) const {
     if (name.empty()) {
         return std::nullopt;
     }
     if (name.substr(0, 4) == "$col") {
         // Handle default column names like $col1, $col2, etc.
         try {
-            ColumnIndex index = std::stoul(name.substr(4));
+            ColumnIndex index = std::stoul(std::string(name.substr(4)));
             // column indices are 1-based in the default naming scheme, so we check if index is between 1 and column_count_
             if (index >= 1 && index <= columns_.size()) {
                 return index - 1; // Convert to 0-based index
@@ -26,7 +28,7 @@ std::optional<ColumnIndex> Schema::find_column(const std::string& name) const {
         }
     }
     for (ColumnIndex i = 0; i < columns_.size(); ++i) {
-        if (columns_[i].name == name) {
+        if (utils::compare_strings(columns_[i].name, name, case_sensitive) == 0) {
             return i;
         }
     }

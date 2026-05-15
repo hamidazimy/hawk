@@ -7,7 +7,6 @@
 #include <hawk/utils/datetime_parser.hpp>
 
 #include <chrono>
-#include <compare>
 #include <utility>
 
 namespace hawk {
@@ -17,12 +16,14 @@ FilterPredicate::FilterPredicate(
     ColumnType                  type,
     FilterOp                    op,
     std::string                 rhs,
+    bool                        case_sensitive,
     std::optional<std::string>  dt_pattern
 )
     : column_index(col)
     , column_type(type)
     , op(op)
     , rhs_str(std::move(rhs))
+    , case_sensitive(case_sensitive)
     , datetime_pattern(std::move(dt_pattern))
 {
     if (type == ColumnType::Integer) {
@@ -44,7 +45,7 @@ bool FilterPredicate::operator()(const Row& row) const {
             ++skipped;
             return false;
         }
-        return utils::contains(lhs, rhs_str);
+        return utils::contains(lhs, rhs_str, case_sensitive);
     }
     switch (column_type) {
         case ColumnType::Integer: {
@@ -97,20 +98,20 @@ bool FilterPredicate::compare_numeric(double lhs, double rhs) const {
 }
 
 bool FilterPredicate::compare_string(std::string_view lhs, std::string_view rhs) const {
+    int cmp = utils::compare_strings(lhs, rhs, case_sensitive);
     switch (op) {
-        case FilterOp::EQ: return lhs == rhs;
-        case FilterOp::NE: return lhs != rhs;
-        case FilterOp::GT: return lhs >  rhs;
-        case FilterOp::LT: return lhs <  rhs;
-        case FilterOp::GE: return lhs >= rhs;
-        case FilterOp::LE: return lhs <= rhs;
+        case FilterOp::EQ: return cmp == 0;
+        case FilterOp::NE: return cmp != 0;
+        case FilterOp::GT: return cmp >  0;
+        case FilterOp::LT: return cmp <  0;
+        case FilterOp::GE: return cmp >= 0;
+        case FilterOp::LE: return cmp <= 0;
         default: return false;
     }
-    return false;
 }
 
 bool RowSearchPredicate::operator()(std::string_view raw_record) const {
-    return utils::contains(raw_record, needle);
+    return utils::contains(raw_record, needle, case_sensitive);
 }
 
 } // namespace hawk

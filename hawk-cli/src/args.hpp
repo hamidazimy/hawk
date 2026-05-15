@@ -23,6 +23,7 @@ struct Args {
     std::optional<bool> has_header;      // --header or --no-header
 
     // Flags
+    bool ignore_case = false;       // --ignore-case or -i
     bool no_confirm = false;        // --no-confirm
     bool show_help = false;         // --help or -h
     bool show_version = false;      // --version or -v

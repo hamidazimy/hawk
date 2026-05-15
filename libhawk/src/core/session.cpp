@@ -1,5 +1,6 @@
 #include <hawk/core/session.hpp>
 
+#include <hawk/core/session_config.hpp>
 #include <hawk/core/types.hpp>
 #include <hawk/core/record_source.hpp>
 #include <hawk/core/schema.hpp>
@@ -28,7 +29,6 @@
 #include <variant>
 #include <vector>
 
-namespace hawk { struct SessionConfig; }
 namespace hawk { class RecordParser; }
 
 namespace hawk {
@@ -89,13 +89,14 @@ CommandResult Session::execute(const LibCommand& command) {
 namespace {
 
 std::optional<std::string> resolve_columns(
-    const Schema& schema,
+    const Schema&                   schema,
     const std::vector<std::string>& names,
-    std::vector<ColumnIndex>& out)
-{
+    std::vector<ColumnIndex>&       out,
+    bool                            case_sensitive = true
+) {
     out.reserve(names.size());
     for (const auto& name : names) {
-        auto index = schema.find_column(name);
+        auto index = schema.find_column(name, case_sensitive);
         if (!index.has_value()) {
             return std::format("Unknown column: {}", name);
         }
@@ -118,22 +119,23 @@ struct PrepareFilterResult {
 };
 
 PrepareFilterResult prepare_filter(
-    const Schema&    schema,
-    const FilterArgs& args)
-{
+    const Schema&     schema,
+    const FilterArgs& args,
+    bool              case_sensitive = true
+) {
     if (args.row_search) {
         if (args.op != FilterOp::HAS) {
             return PrepareFilterResult::err("$row only supports the 'has' operator");
         }
-        return PrepareFilterResult::ok(RowSearchPredicate{args.value});
+        return PrepareFilterResult::ok(RowSearchPredicate{args.value, case_sensitive});
     }
 
-    auto column_index = schema.find_column(args.column);
-    if (!column_index) {
+    auto col_idx = schema.find_column(args.column, case_sensitive);
+    if (!col_idx) {
         return PrepareFilterResult::err(std::format("Unknown column: {}", args.column));
     }
 
-    const ColumnType column_type = schema.column_type(*column_index);
+    const ColumnType column_type = schema.column_type(*col_idx);
 
     if (args.op == FilterOp::HAS && column_type != ColumnType::String) {
         return PrepareFilterResult::err(std::format(
@@ -144,7 +146,7 @@ PrepareFilterResult prepare_filter(
 
     std::optional<std::string> datetime_pattern;
     if (column_type == ColumnType::DateTime) {
-        const auto& col_schema = schema.column(*column_index);
+        const auto& col_schema = schema.column(*col_idx);
         if (!col_schema.datetime_pattern.has_value()) {
             return PrepareFilterResult::err(std::format(
                 "Column '{}' has no datetime pattern — cannot filter", args.column
@@ -179,7 +181,9 @@ PrepareFilterResult prepare_filter(
         }
     }
 
-    return PrepareFilterResult::ok(FilterPredicate{*column_index, column_type, args.op, args.value, datetime_pattern});
+    return PrepareFilterResult::ok(
+        FilterPredicate{*col_idx, column_type, args.op, args.value, case_sensitive, datetime_pattern}
+    );
 }
 
 using ComparableKey = std::variant<std::monostate, int64_t, double, std::string>;
@@ -229,6 +233,10 @@ bool compare_sort_keys(const ComparableKey& ka, const ComparableKey& kb, bool is
 
 } // namespace
 
+std::optional<ColumnIndex> Session::find_column(std::string_view name) const {
+    return schema_.find_column(name, config_.case_sensitive);
+}
+
 bool Session::apply_predicate(const FilterPredicateVariant& pred_variant, RecordIndex idx) {
     return std::visit([&](auto& pred) {
         if constexpr (std::is_same_v<std::decay_t<decltype(pred)>, RowSearchPredicate>) {
@@ -240,7 +248,7 @@ bool Session::apply_predicate(const FilterPredicateVariant& pred_variant, Record
 }
 
 RecordCount Session::apply_sort(const SortKey& key) {
-    const auto& col_schema = schema_.column(key.col_index);
+    const auto& col_schema = schema_.column(key.col_idx);
     const ColumnType col_type = col_schema.type;
 
     // Comparable key type: monostate means unparseable
@@ -251,7 +259,7 @@ RecordCount Session::apply_sort(const SortKey& key) {
     keyed.reserve(current_view_.size());
 
     current_view_.for_each([&](RecordIndex idx) {
-        auto field = make_row_from_file(idx).get(key.col_index);
+        auto field = make_row_from_file(idx).get(key.col_idx);
         Key k;
         switch (col_type) {
             case ColumnType::Integer: {
@@ -340,21 +348,21 @@ CommandResult Session::execute_impl(const ColumnsCommand&) {
 }
 
 CommandResult Session::execute_impl(const SetColumnNameCommand& cmd) {
-    auto column_index = schema_.find_column(cmd.old_name);
-    if (!column_index) {
+    auto col_idx = find_column(cmd.old_name);
+    if (!col_idx) {
         return CommandResult::err(std::format(
             "Unknown column: {}",
             cmd.old_name
         ));
     }
 
-    schema_.set_column_name(*column_index, cmd.new_name);
+    schema_.set_column_name(*col_idx, cmd.new_name);
     return CommandResult::ok();
 }
 
 CommandResult Session::execute_impl(const SetColumnTypeCommand& cmd) {
-    auto column_index = schema_.find_column(cmd.column);
-    if (!column_index) {
+    auto col_idx = find_column(cmd.column);
+    if (!col_idx) {
         return CommandResult::err(std::format(
             "Unknown column: {}",
             cmd.column
@@ -371,12 +379,12 @@ CommandResult Session::execute_impl(const SetColumnTypeCommand& cmd) {
     // view was built under the previous type interpretation. Whether that
     // produces meaningful results is the analyst's responsibility.
     // Revisit if view invalidation on type change becomes necessary.
-    schema_.set_column_type(*column_index, cmd.type, cmd.datetime_pattern);
+    schema_.set_column_type(*col_idx, cmd.type, cmd.datetime_pattern);
 
     // TODO: If the sorted column's type changes, the active sort order is now based on
     // the old type interpretation and may be semantically wrong. Consider invalidating
     // active_sort_ and warning the analyst when this occurs.
-    if (active_sort_ && active_sort_->col_index == *column_index) {
+    if (active_sort_ && active_sort_->col_idx == *col_idx) {
         auto result = CommandResult::ok();
         result.warnings.push_back(std::format(
             "Column '{}' type changed while an active sort is applied on it. "
@@ -391,7 +399,7 @@ CommandResult Session::execute_impl(const SetColumnTypeCommand& cmd) {
 
 CommandResult Session::execute_impl(const SelectCommand& cmd) {
     std::vector<ColumnIndex> indices;
-    if (auto err = resolve_columns(schema_, cmd.columns, indices)) {
+    if (auto err = resolve_columns(schema_, cmd.columns, indices, config_.case_sensitive)) {
         return CommandResult::err(*err);
     }
     current_projection_.select(std::move(indices));
@@ -400,7 +408,7 @@ CommandResult Session::execute_impl(const SelectCommand& cmd) {
 
 CommandResult Session::execute_impl(const SelectAddCommand& cmd) {
     std::vector<ColumnIndex> indices;
-    if (auto err = resolve_columns(schema_, cmd.columns, indices)) {
+    if (auto err = resolve_columns(schema_, cmd.columns, indices, config_.case_sensitive)) {
         return CommandResult::err(*err);
     }
     current_projection_.add(indices);
@@ -409,7 +417,7 @@ CommandResult Session::execute_impl(const SelectAddCommand& cmd) {
 
 CommandResult Session::execute_impl(const DeselectCommand& cmd) {
     std::vector<ColumnIndex> indices;
-    if (auto err = resolve_columns(schema_, cmd.columns, indices)) {
+    if (auto err = resolve_columns(schema_, cmd.columns, indices, config_.case_sensitive)) {
         return CommandResult::err(*err);
     }
     if (current_projection_.size() - indices.size() < 1) {
@@ -479,7 +487,7 @@ CommandResult Session::execute_impl(const TailCommand& cmd) {
 }
 
 CommandResult Session::execute_impl(const FilterCommand& cmd) {
-    auto filter_result = prepare_filter(schema_, cmd);
+    auto filter_result = prepare_filter(schema_, cmd, config_.case_sensitive);
     if (filter_result.error) return CommandResult::err(*filter_result.error);
     auto& pred = *filter_result.pred;
 
@@ -503,7 +511,7 @@ CommandResult Session::execute_impl(const FilterCommand& cmd) {
 }
 
 CommandResult Session::execute_impl(const FilterExpandCommand& cmd) {
-    auto filter_result = prepare_filter(schema_, cmd);
+    auto filter_result = prepare_filter(schema_, cmd, config_.case_sensitive);
     if (filter_result.error) return CommandResult::err(*filter_result.error);
     auto& pred = *filter_result.pred;
 
@@ -550,7 +558,7 @@ CommandResult Session::execute_impl(const FilterExpandCommand& cmd) {
 }
 
 CommandResult Session::execute_impl(const FilterExcludeCommand& cmd) {
-    auto filter_result = prepare_filter(schema_, cmd);
+    auto filter_result = prepare_filter(schema_, cmd, config_.case_sensitive);
     if (filter_result.error) return CommandResult::err(*filter_result.error);
     auto& pred = *filter_result.pred;
 
@@ -574,13 +582,13 @@ CommandResult Session::execute_impl(const FilterExcludeCommand& cmd) {
 }
 
 CommandResult Session::execute_impl(const SortCommand& cmd) {
-    auto col_index = schema_.find_column(cmd.column);
-    if (!col_index) {
+    auto col_idx = find_column(cmd.column);
+    if (!col_idx) {
         return CommandResult::err(std::format("Unknown column: {}", cmd.column));
     }
 
-    auto unparseable = apply_sort(SortKey{*col_index, cmd.is_desc});
-    active_sort_ = SortKey{*col_index, cmd.is_desc};
+    auto unparseable = apply_sort(SortKey{*col_idx, cmd.is_desc});
+    active_sort_ = SortKey{*col_idx, cmd.is_desc};
 
     return CommandResult::ok(SortResult{
         current_view_.size(),
@@ -592,14 +600,14 @@ CommandResult Session::execute_impl(const SortCommand& cmd) {
 
 CommandResult Session::execute_impl(const DistinctCommand& cmd) {
     // Validate column exists
-    auto col_index = schema_.find_column(cmd.column);
-    if (!col_index) {
+    auto col_idx = find_column(cmd.column);
+    if (!col_idx) {
         return CommandResult::err(std::format("Unknown column: {}", cmd.column));
     }
 
     // Validate column is in current projection
     const auto& proj_cols = current_projection_.columns();
-    if (std::find(proj_cols.begin(), proj_cols.end(), *col_index) == proj_cols.end()) {
+    if (std::find(proj_cols.begin(), proj_cols.end(), *col_idx) == proj_cols.end()) {
         return CommandResult::err(std::format(
             "Column '{}' is not in the current selection. "
             "Use 'select+ {}' to add it first.",
@@ -607,7 +615,7 @@ CommandResult Session::execute_impl(const DistinctCommand& cmd) {
         ));
     }
 
-    const auto& col_schema = schema_.column(*col_index);
+    const auto& col_schema = schema_.column(*col_idx);
     const ColumnType col_type = col_schema.type;
 
     // Build frequency map
@@ -615,11 +623,14 @@ CommandResult Session::execute_impl(const DistinctCommand& cmd) {
     RecordCount empty_count = 0;
 
     current_view_.for_each([&](RecordIndex idx) {
-        auto field = make_row_from_file(idx).get(*col_index);
+        auto field = make_row_from_file(idx).get(*col_idx);
         if (field.empty()) {
             ++empty_count;
         } else {
-            ++freq[std::string(field)];
+            auto key = config_.case_sensitive
+                ? std::string(field)
+                : utils::to_lower(field);
+            ++freq[key];
         }
     });
 

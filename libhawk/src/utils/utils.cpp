@@ -93,10 +93,11 @@ bool iequals(std::string_view a, std::string_view b) {
                      });
 }
 
-std::string to_lower(std::string str) {
-    std::transform(str.begin(), str.end(), str.begin(),
+std::string to_lower(std::string_view str) {
+    std::string result(str);
+    std::transform(result.begin(), result.end(), result.begin(),
                    [](unsigned char c) { return std::tolower(c); });
-    return str;
+    return result;
 }
 
 bool parse_int(std::string_view s, std::int64_t& out) {
@@ -112,7 +113,7 @@ bool parse_double(std::string_view s, double& out) {
     return result.ec == std::errc{} && result.ptr == end;
 }
 
-bool contains(std::string_view haystack, std::string_view needle, bool case_sensitive = false) {
+bool contains(std::string_view haystack, std::string_view needle, bool case_sensitive) {
     if (needle.empty()) return true;
     if (needle.size() > haystack.size()) return false;
     auto it = std::search(
@@ -125,6 +126,21 @@ bool contains(std::string_view haystack, std::string_view needle, bool case_sens
         }
     );
     return it != haystack.end();
+}
+
+int compare_strings(std::string_view a, std::string_view b, bool case_sensitive) {
+    if (case_sensitive) {
+        if (a == b) return 0;
+        return a < b ? -1 : 1;
+    }
+    std::size_t len = std::min(a.size(), b.size());
+    for (std::size_t i = 0; i < len; ++i) {
+        int ca = std::tolower(static_cast<unsigned char>(a[i]));
+        int cb = std::tolower(static_cast<unsigned char>(b[i]));
+        if (ca != cb) return ca - cb;
+    }
+    if (a.size() == b.size()) return 0;
+    return a.size() < b.size() ? -1 : 1;
 }
 
 } // namespace hawk::utils

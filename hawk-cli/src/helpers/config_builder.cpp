@@ -95,6 +95,7 @@ static SessionConfig merge_config(
     SessionConfig config;
     config.delimiter  = args.delimiter.value_or(inference.delimiter);
     config.has_header = args.has_header.value_or(inference.has_header);
+    config.case_sensitive = !args.ignore_case;
     return config;
 }
 
@@ -105,6 +106,7 @@ SessionConfig build_config(const Args& args, const RecordSource& source) {
         config.use_crlf   = source.has_crlf();
         config.delimiter  = args.delimiter.value();
         config.has_header = args.has_header.value();
+        config.case_sensitive = !args.ignore_case;
         return config;
     }
 

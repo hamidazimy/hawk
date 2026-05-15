@@ -21,7 +21,7 @@ namespace hawk { struct CommandResult; }
 namespace hawk {
 
 struct SortKey {
-    ColumnIndex col_index;
+    ColumnIndex col_idx;
     bool        is_desc = false;
 };
 
@@ -79,6 +79,7 @@ private:
     CommandResult execute_impl(const ResetViewCommand&);
 
     // -- Internal helper methods for command execution --
+    std::optional<ColumnIndex> find_column(std::string_view name) const;
     bool apply_predicate(const FilterPredicateVariant&, RecordIndex);
     RecordCount apply_sort(const SortKey& key);
 
