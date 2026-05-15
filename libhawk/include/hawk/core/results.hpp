@@ -38,6 +38,17 @@ struct SortResult {
     bool        is_desc;
 };
 
+struct DistinctEntry {
+    std::string value;
+    RecordCount count;
+};
+
+struct DistinctResult {
+    std::string                column;
+    std::vector<DistinctEntry> entries;
+    RecordCount                total_rows;
+};
+
 struct ColumnsResult {
     std::vector<ColumnSchema> columns;
 };
@@ -47,6 +58,7 @@ using ResultPayload = std::variant<
     CountResult,
     FilterResult,
     SortResult,
+    DistinctResult,
     ColumnsResult
 >;
 

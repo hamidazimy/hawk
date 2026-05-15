@@ -75,6 +75,7 @@ private:
     CommandResult execute_impl(const FilterExpandCommand&);
     CommandResult execute_impl(const FilterExcludeCommand&);
     CommandResult execute_impl(const SortCommand&);
+    CommandResult execute_impl(const DistinctCommand&);
     CommandResult execute_impl(const ResetViewCommand&);
 
     // -- Internal helper methods for command execution --

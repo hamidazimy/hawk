@@ -24,6 +24,7 @@ LibCommand filter   (std::string_view);
 LibCommand filter_exp(std::string_view);
 LibCommand filter_exc(std::string_view);
 LibCommand sort     (std::string_view);
+LibCommand distinct (std::string_view);
 LibCommand reset    (std::string_view);
 
 // Cli command parsers

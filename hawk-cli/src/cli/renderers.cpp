@@ -177,6 +177,34 @@ void render_impl(
     )) << std::endl;
 }
 
+void render_impl(
+    const hawk::DistinctResult& res,
+    const hawk::Schema&,
+    std::ostream& sout)
+{
+    sout << cli::log_success(std::format("Found {} distinct values for '{}' ({} total rows):\n\n",
+        res.entries.size(), res.column, res.total_rows));
+
+    // Column width for alignment
+    std::size_t max_value_width = 7; // minimum — length of "(empty)"
+    std::size_t count_width = 5; // minimum — length of "Count"
+    for (const auto& entry : res.entries) {
+        max_value_width = std::max(max_value_width, entry.value.size());
+        count_width = std::max(count_width, static_cast<std::size_t>(std::to_string(entry.count).size()));
+    }
+
+    sout << std::format("  {:<{}}  {}\n",
+        "Value", max_value_width, "Count");
+    sout << std::format("  {:<{}}  {}\n",
+        std::string(max_value_width, '-'), max_value_width, std::string(count_width, '-'));
+
+    for (const auto& entry : res.entries) {
+        sout << std::format("  {:<{}}  {:>{}}\n",
+            entry.value, max_value_width, entry.count, count_width);
+    }
+    sout << std::endl;
+}
+
 } // anonymous namespace
 
 void render_result(

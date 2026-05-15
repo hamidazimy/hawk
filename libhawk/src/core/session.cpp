@@ -22,6 +22,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <variant>
@@ -179,6 +180,51 @@ PrepareFilterResult prepare_filter(
     }
 
     return PrepareFilterResult::ok(FilterPredicate{*column_index, column_type, args.op, args.value, datetime_pattern});
+}
+
+using ComparableKey = std::variant<std::monostate, int64_t, double, std::string>;
+
+ComparableKey make_sort_key(
+    std::string_view        field,
+    ColumnType              col_type,
+    const ColumnSchema&     col_schema)
+{
+    switch (col_type) {
+        case ColumnType::Integer: {
+            int64_t v;
+            return utils::parse_int(field, v) ? ComparableKey{v} : ComparableKey{std::monostate{}};
+        }
+        case ColumnType::Float: {
+            double v;
+            return utils::parse_double(field, v) ? ComparableKey{v} : ComparableKey{std::monostate{}};
+        }
+        case ColumnType::DateTime: {
+            if (col_schema.datetime_pattern) {
+                auto v = utils::parse_datetime(field, *col_schema.datetime_pattern);
+                return v ? ComparableKey{static_cast<int64_t>(v->time_since_epoch().count())}
+                         : ComparableKey{std::monostate{}};
+            }
+            return std::monostate{};
+        }
+        case ColumnType::String: {
+            return std::string(field);
+        }
+    }
+    return std::monostate{};
+}
+
+bool compare_sort_keys(const ComparableKey& ka, const ComparableKey& kb, bool is_desc) {
+    bool a_null = std::holds_alternative<std::monostate>(ka);
+    bool b_null = std::holds_alternative<std::monostate>(kb);
+    if (a_null && b_null) return false;
+    if (a_null) return is_desc;
+    if (b_null) return !is_desc;
+
+    return std::visit([&](const auto& va) -> bool {
+        using T = std::decay_t<decltype(va)>;
+        const auto& vb = std::get<T>(kb);
+        return is_desc ? va > vb : va < vb;
+    }, ka);
 }
 
 } // namespace
@@ -542,6 +588,93 @@ CommandResult Session::execute_impl(const SortCommand& cmd) {
         cmd.column,
         cmd.is_desc
     });
+}
+
+CommandResult Session::execute_impl(const DistinctCommand& cmd) {
+    // Validate column exists
+    auto col_index = schema_.find_column(cmd.column);
+    if (!col_index) {
+        return CommandResult::err(std::format("Unknown column: {}", cmd.column));
+    }
+
+    // Validate column is in current projection
+    const auto& proj_cols = current_projection_.columns();
+    if (std::find(proj_cols.begin(), proj_cols.end(), *col_index) == proj_cols.end()) {
+        return CommandResult::err(std::format(
+            "Column '{}' is not in the current selection. "
+            "Use 'select+ {}' to add it first.",
+            cmd.column, cmd.column
+        ));
+    }
+
+    const auto& col_schema = schema_.column(*col_index);
+    const ColumnType col_type = col_schema.type;
+
+    // Build frequency map
+    std::unordered_map<std::string, RecordCount> freq;
+    RecordCount empty_count = 0;
+
+    current_view_.for_each([&](RecordIndex idx) {
+        auto field = make_row_from_file(idx).get(*col_index);
+        if (field.empty()) {
+            ++empty_count;
+        } else {
+            ++freq[std::string(field)];
+        }
+    });
+
+    // Build entries vector
+    std::vector<DistinctEntry> entries;
+    entries.reserve(freq.size() + (empty_count > 0 ? 1 : 0));
+    for (auto& [value, count] : freq) {
+        entries.push_back({value, count});
+    }
+
+    // Sort entries
+    if (cmd.sort_by_value) {
+        // Type-aware value sort
+        std::stable_sort(entries.begin(), entries.end(),
+            [&](const DistinctEntry& a, const DistinctEntry& b) {
+                auto ka = make_sort_key(a.value, col_type, col_schema);
+                auto kb = make_sort_key(b.value, col_type, col_schema);
+                return compare_sort_keys(ka, kb, cmd.sort_desc);
+            }
+        );
+    } else {
+        // Sort by count
+        std::stable_sort(entries.begin(), entries.end(),
+            [&](const DistinctEntry& a, const DistinctEntry& b) {
+                return cmd.sort_desc ? a.count < b.count : a.count > b.count;
+            }
+        );
+    }
+
+    // High cardinality warning — before moving entries, before prepending empty
+    const RecordCount total_rows = current_view_.size();
+    const RecordCount distinct_count = entries.size() + (empty_count > 0 ? 1 : 0);
+
+    // Prepend empty entry — always first regardless of sort mode
+    if (empty_count > 0) {
+        entries.insert(entries.begin(), DistinctEntry{"(empty)", empty_count});
+    }
+
+    auto result = CommandResult::ok(DistinctResult{
+        cmd.column,
+        std::move(entries),
+        total_rows
+    });
+
+    // High cardinality warning — uses distinct_count captured before move
+    if (total_rows > 0 &&
+        static_cast<double>(distinct_count) / static_cast<double>(total_rows) > 0.5) {
+        result.warnings.push_back(std::format(
+            "Column '{}' has high cardinality ({} distinct values out of {} rows). "
+            "It may not be suitable for grouping.",
+            cmd.column, distinct_count, total_rows
+        ));
+    }
+
+    return result;
 }
 
 CommandResult Session::execute_impl(const ResetViewCommand&) {

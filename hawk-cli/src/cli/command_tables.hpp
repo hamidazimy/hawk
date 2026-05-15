@@ -8,7 +8,7 @@
 
 namespace hawk::cli {
 
-inline const std::array<LibCommandInfo, 14> lib_command_table{{
+inline const std::array<LibCommandInfo, 15> lib_command_table{{
     {
         "columns",
         "",
@@ -164,6 +164,24 @@ inline const std::array<LibCommandInfo, 14> lib_command_table{{
         "  sort event_id --desc\n"
         "  sort $col6 -r",
         parsers::sort
+    },
+    {
+        "distinct",
+        "<column> [-v|--sort-by-value] [-r|--desc]",
+        "Show distinct values and their counts for a column",
+        "Lists all unique values in the specified column within the current view, "
+        "along with how many times each appears.\n"
+        "Empty fields are shown as (empty) and always appear first.\n\n"
+        "By default results are sorted by count descending (most frequent first).\n"
+        "Use -v/--sort-by-value to sort by value instead (type-aware for numeric and datetime columns).\n"
+        "Use -r/--desc to reverse the sort order.\n\n"
+        "A warning is shown when the column has high cardinality.\n"
+        "Column must be in the current selection — use 'select+' to add it if needed.\n\n"
+        "Examples:\n"
+        "  distinct event_id\n"
+        "  distinct level -v\n"
+        "  distinct timestamp --sort-by-value --desc",
+        parsers::distinct
     },
     {
         "reset",

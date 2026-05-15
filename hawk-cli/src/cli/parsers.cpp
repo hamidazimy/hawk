@@ -351,6 +351,40 @@ LibCommand sort     (std::string_view args_line) {
     return SortCommand{std::move(column), is_desc};
 }
 
+LibCommand distinct (std::string_view args_line) {
+    auto args = utils::tokenize(args_line);
+    if (args.empty()) {
+        throw std::invalid_argument{
+            "distinct requires a column name.\n"
+            "Usage: distinct <column> [-v|--sort-by-value] [-r|--desc]"
+        };
+    }
+
+    bool        sort_by_value = false;
+    bool        sort_desc     = false;
+    std::string column;
+
+    for (const auto& arg : args) {
+        if (arg == "--sort-by-value" || arg == "-v") {
+            sort_by_value = true;
+        } else if (arg == "--desc" || arg == "-r") {
+            sort_desc = true;
+        } else if (column.empty()) {
+            column = arg;
+        } else {
+            throw std::invalid_argument{
+                std::format("Unexpected argument for distinct command: {}", arg)
+            };
+        }
+    }
+
+    if (column.empty()) {
+        throw std::invalid_argument{"distinct requires a column name."};
+    }
+
+    return DistinctCommand{std::move(column), sort_by_value, sort_desc};
+}
+
 LibCommand reset    (std::string_view args_line) {
     if (!args_line.empty()) {
         throw std::invalid_argument{

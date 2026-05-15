@@ -94,6 +94,12 @@ struct SortCommand {
     bool        is_desc = false;
 };
 
+struct DistinctCommand {
+    std::string column;
+    bool        sort_by_value = false; // sort by value instead of count
+    bool        sort_desc     = false; // reverse sort order
+};
+
 struct ResetViewCommand {
 };
 
@@ -113,6 +119,7 @@ using LibCommand = std::variant<
     FilterExpandCommand,
     FilterExcludeCommand,
     SortCommand,
+    DistinctCommand,
     ResetViewCommand
 >;
 
