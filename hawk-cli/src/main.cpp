@@ -1,6 +1,7 @@
 #include <hawk/hawk.hpp>
 
 #include <args.hpp>
+#include <helpers/console.hpp>
 #include <helpers/config_builder.hpp>
 #include <cli/renderers.hpp>
 #include <cli/repl.hpp>
@@ -11,6 +12,8 @@
 #include <utility>
 
 int main(int argc, char* argv[]) {
+    hawk::cli::setup_console();
+
     // ----------------------------
     // Parse arguments
     // ----------------------------

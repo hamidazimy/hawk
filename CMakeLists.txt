@@ -4,7 +4,7 @@ cmake_minimum_required(VERSION 3.15)
 # Project
 # -----------------------------------------------------------------------------
 
-project(hawk VERSION 0.5.2 LANGUAGES CXX)
+project(hawk VERSION 0.5.3 LANGUAGES CXX)
 
 # -----------------------------------------------------------------------------
 # Build options
@@ -107,6 +107,8 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 
 add_subdirectory(libhawk)
 add_subdirectory(hawk-cli)
+
+add_subdirectory(third_party/replxx)
 
 # -----------------------------------------------------------------------------
 # Build summary

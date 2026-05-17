@@ -5,7 +5,11 @@
 
 #include <hawk/hawk.hpp>
 
+#include <replxx.hxx>
+
+#include <cstddef>
 #include <memory>
+#include <string>
 
 namespace hawk::cli {
 
@@ -21,6 +25,8 @@ public:
     const Session& session() const { return *session_; }
 
 private:
+    std::string prompt() const;
+
     bool execute(const CliCommand& cmd);
 
     bool execute_impl(const CliCommandExport&);
@@ -29,6 +35,8 @@ private:
 
 private:
     std::unique_ptr<Session> session_;
+    replxx::Replxx editor_;
+    std::size_t terminal_width_ = 80;
 };
 
 } // namespace hawk::cli

@@ -8,6 +8,7 @@ while read src; do \
         -Xiwyu --mapping_file=libhawk/iwyu.imp \
         -Xiwyu --no_fwd_decls \
         -Ilibhawk/include \
+        -Ithird_party/replxx/include \
         -Ihawk-cli/src \
         -Ibuild/generated \
         $src 2>&1)

@@ -4,11 +4,13 @@
 #include <cli/cli_commands.hpp>
 #include <cli/command_tables.hpp>
 #include <cli/renderers.hpp>
-
 #include <constants.hpp>
+#include <helpers/console.hpp>
 #include <helpers/output_decorator.hpp>
 
 #include <hawk/hawk.hpp>
+
+#include <replxx.hxx>
 
 #include <array>
 #include <exception>
@@ -27,6 +29,7 @@ namespace hawk::cli {
 
 REPL::REPL(std::unique_ptr<hawk::Session> session)
     : session_(std::move(session))
+    , terminal_width_(cli::terminal_width())
 {
     if (!session_) {
         throw std::invalid_argument("REPL requires a valid session");
@@ -45,27 +48,25 @@ void REPL::run() {
         }
     }
 
-    while (true) {
-        std::cout << constants::PROMPT;
-        std::cout.flush();
+    editor_.set_max_history_size(512);
 
-        std::string input;
-        if (!std::getline(std::cin, input)) {
-            // EOF (Ctrl+D)
+    while (true) {
+        const char* raw = editor_.input(prompt());
+        if (!raw) {
+            // EOF or Ctrl+D
             std::cout << "\n";
             break;
         }
+        std::string input(raw);
 
         // Trim whitespace
         auto first = input.find_first_not_of(" \t");
-        if (first == std::string::npos) {
-            input.clear();
-        } else {
-            auto last = input.find_last_not_of(" \t");
-            input = input.substr(first, last - first + 1);
-        }
-
+        if (first == std::string::npos) continue;
+        auto last = input.find_last_not_of(" \t");
+        input = input.substr(first, last - first + 1);
         if (input.empty()) continue;
+
+        editor_.history_add(input);
 
         // Split command and arguments
         std::string_view line{input};
@@ -132,6 +133,10 @@ void REPL::run() {
     }
 
     std::cout << constants::GOODBYE_MSG << "\n";
+}
+
+std::string REPL::prompt() const {
+    return std::string(constants::PROMPT);
 }
 
 bool REPL::execute(const CliCommand& command) {
