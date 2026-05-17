@@ -25,6 +25,7 @@ struct Args {
     // Flags
     bool ignore_case = false;       // --ignore-case or -i
     bool no_confirm = false;        // --no-confirm
+    bool no_color = false;          // --no-color
     bool show_help = false;         // --help or -h
     bool show_version = false;      // --version or -v
 

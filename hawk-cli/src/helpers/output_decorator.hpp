@@ -8,7 +8,11 @@ namespace hawk::cli {
 
 namespace sgr {
 
-inline const std::string RESET = "\x1b[0m";
+void set_color_enabled(bool enabled);
+
+bool is_color_enabled();
+
+std::string rst();
 
 std::string sgr(const std::string& code);
 

@@ -29,6 +29,12 @@ Args parse_args(int argc, char* argv[]) {
                 return args;
             }
 
+            // Color flags
+            if (arg == "--no-color") {
+                args.no_color = true;
+                continue;
+            }
+
             // Behaviour flags
             if (arg == "--no-confirm") {
                 args.no_confirm = true;

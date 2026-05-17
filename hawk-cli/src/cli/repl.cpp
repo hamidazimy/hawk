@@ -223,14 +223,14 @@ bool REPL::execute_impl(const CliCommandHelp& cmd) {
                 << sgr::rgb("#448") << std::right << std::setw(10) << info.name
                 << sgr::rgb("#844") << " " << info.usage << "\n"
                 << sgr::rgb("#444") << std::setw(10) << "" << " " << std::left << info.description
-                << sgr::RESET << "\n\n";
+                << sgr::rst() << "\n\n";
         };
 
-        std::cout << sgr::rgb("#153") << "Built-in Commands:\n\n" << sgr::RESET;
+        std::cout << sgr::colorize("Built-in Commands:\n\n", "#153");
         for (const auto& info : cli_command_table) {
             render_command_summary(info);
         }
-        std::cout << sgr::rgb("#153") << "Library Commands:\n\n" << sgr::RESET;
+        std::cout << sgr::colorize("Library Commands:\n\n", "#153");
         for (const auto& info : lib_command_table) {
             render_command_summary(info);
         }

@@ -2,14 +2,36 @@
 
 #include <args.hpp>
 #include <helpers/console.hpp>
+#include <helpers/output_decorator.hpp>
 #include <helpers/config_builder.hpp>
 #include <cli/renderers.hpp>
 #include <cli/repl.hpp>
 
+#include <cstdlib>
 #include <exception>
 #include <memory>
 #include <string>
 #include <utility>
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
+
+namespace {
+
+bool should_enable_color(const hawk::cli::Args& args) {
+    if (args.no_color)              return false;
+    if (std::getenv("NO_COLOR"))    return false;
+#ifdef _WIN32
+    if (!_isatty(_fileno(stdout)))  return false;
+#else
+    if (!isatty(STDOUT_FILENO))     return false;
+#endif
+    return true;
+}
+
+} // anonymous namespace
 
 int main(int argc, char* argv[]) {
     hawk::cli::setup_console();
@@ -18,6 +40,9 @@ int main(int argc, char* argv[]) {
     // Parse arguments
     // ----------------------------
     auto args = hawk::cli::parse_args(argc, argv);
+
+    bool color_enabled = should_enable_color(args);
+    hawk::cli::sgr::set_color_enabled(color_enabled);
 
     if (args.show_help) {
         hawk::cli::print_help(argv[0]);
