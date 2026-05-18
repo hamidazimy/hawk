@@ -273,15 +273,21 @@ LibCommand count    (std::string_view args_line) {
 
 LibCommand peek     (std::string_view args_line) {
     if (args_line.empty()) {
-        return PeekCommand{0}; // default to first row
+        return PeekCommand{0, false}; // default to first row of view
+    }
+    bool raw = false;
+    std::string_view index_str = args_line;
+    if (args_line.starts_with('#')) {
+        raw = true;
+        index_str = args_line.substr(1);
     }
     std::int64_t index;
-    if (!hawk::utils::parse_int(args_line, index) || index < 1) {
+    if (!hawk::utils::parse_int(index_str, index) || index < 1) {
         throw std::invalid_argument{
             std::format("Invalid argument for peek command: {}", args_line)
         };
     }
-    return PeekCommand{static_cast<RecordIndex>(index - 1)}; // changing 1-based indexing of cli to 0-based indexing of the lib.
+    return PeekCommand{static_cast<RecordIndex>(index - 1), raw};
 }
 
 LibCommand head     (std::string_view args_line) {

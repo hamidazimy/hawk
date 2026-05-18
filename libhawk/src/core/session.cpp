@@ -437,15 +437,26 @@ CommandResult Session::execute_impl(const CountCommand&) {
 }
 
 CommandResult Session::execute_impl(const PeekCommand& cmd) {
-    if (cmd.index >= row_count()) {
+    if (cmd.raw) {
+        if (cmd.index >= row_count()) {
+            return CommandResult::err(std::format(
+                "Index out of range: #{} (file has {} records)",
+                cmd.index + 1, row_count()
+            ));
+        }
+        return CommandResult::ok(RowsResult{
+            {make_row_from_file(cmd.index)},
+            &current_projection_
+        });
+    }
+    if (cmd.index >= current_view_.size()) {
         return CommandResult::err(std::format(
-            "Index out of range: {} (total records: {})",
-            cmd.index, row_count()
+            "Index out of range: {} (view has {} records)",
+            cmd.index + 1, current_view_.size()
         ));
     }
-
     return CommandResult::ok(RowsResult{
-        {make_row_from_file(cmd.index)},
+        {make_row_from_view(cmd.index)},
         &current_projection_
     });
 }

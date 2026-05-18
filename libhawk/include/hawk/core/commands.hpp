@@ -63,6 +63,7 @@ struct CountCommand {
 
 struct PeekCommand {
     RecordIndex index;
+    bool        raw = false;
 };
 
 struct HeadCommand {
