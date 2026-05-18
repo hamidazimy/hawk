@@ -2,6 +2,7 @@
 
 #include <args.hpp>
 #include <helpers/utils.hpp>
+#include <helpers/spinner.hpp>
 
 #include <hawk/hawk.hpp>
 
@@ -111,9 +112,13 @@ SessionConfig build_config(const Args& args, const RecordSource& source) {
     }
 
     // Run inference against real data
-    std::cout << "Analyzing file...\n";
     inference::FormatInferer inferer;
-    auto inference_result = inferer.infer(source);
+    auto inference_result = [&] {
+        Spinner spinner("Analyzing file...");
+        inference::FormatInferer inferer;
+        return inferer.infer(source);
+    }();
+    std::cout << "Analysis results:\n";
 
     // Print inference notes for transparency
     for (const auto& note : inference_result.notes)
