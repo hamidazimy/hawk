@@ -40,6 +40,24 @@ void render_hline(
     sout << "\n" << std::setfill(' ');
 }
 
+void render_colns(
+    char ch,
+    const std::vector<std::size_t>& column_widths,
+    const hawk::Projection* projection,
+    const std::uint8_t index_width,
+    std::string index_sep,
+    std::ostream& sout
+) {
+    if (index_width > 0) {
+        sout << std::setw(index_width + 1) << std::setfill(' ') << "" << index_sep << " ";
+    }
+    sout << std::left;
+    for (std::size_t i = 0; i < column_widths.size()
+    ; ++i)
+        sout << std::setw(column_widths[i]) << std::setfill(ch) << std::format("[$col{}]", projection->at(i) + 1) << " ";
+    sout << "\n" << std::setfill(' ');
+}
+
 void render_header(
     const hawk::Schema& schema,
     const hawk::Projection* projection,
@@ -47,7 +65,7 @@ void render_header(
     const std::uint8_t index_width,
     std::ostream& sout
 ) {
-    render_hline('-', column_widths, index_width, "┐", sout);
+    render_colns('-', column_widths, projection, index_width, "┐", sout);
     if (index_width > 0) {
         sout << std::setw(index_width) << std::right << "#" << " │ ";
     }
@@ -79,8 +97,8 @@ void render_row(
 
         if (field.size() > width) {
             trimmed.reserve(width);
-            trimmed.append(field.data(), width - 3);
-            trimmed += "...";
+            trimmed.append(field.data(), width - 1);
+            trimmed += "…";
         } else {
             trimmed = field;
         }
@@ -98,7 +116,7 @@ void render_impl(
     std::ostream& sout
 ) {
     const std::size_t MAX_COL_WIDTH = 20;
-    const std::size_t MIN_COL_WIDTH = 4;
+    const std::size_t MIN_COL_WIDTH = 7;
     ColumnCount column_count = res.projection->size();
     std::vector<std::size_t> column_widths(column_count, 0);
     std::uint8_t index_width = 1;
@@ -118,7 +136,6 @@ void render_impl(
         }
         index_width = std::max(index_width, hawk::cli::utils::num_digits(row.index() + 1));
     }
-    index_width = 0; // Tepmorarily disable index column. TODO: fix this!
     render_header(schema, res.projection, column_widths, index_width, sout);
     for (const auto& row : res.rows) {
         render_row(row, res.projection, column_widths, index_width, sout);
@@ -186,7 +203,7 @@ void render_impl(
         res.entries.size(), res.column, res.total_rows));
 
     // Column width for alignment
-    std::size_t max_value_width = 7; // minimum — length of "(empty)"
+    std::size_t max_value_width = 8; // minimum — length of "(empty)"
     std::size_t count_width = 5; // minimum — length of "Count"
     for (const auto& entry : res.entries) {
         max_value_width = std::max(max_value_width, entry.value.size());
