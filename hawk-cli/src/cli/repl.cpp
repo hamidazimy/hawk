@@ -159,13 +159,13 @@ bool REPL::execute_impl(const CliCommandExport& cmd) {
     static char write_buffer[4 * 1024 * 1024];
     fout.rdbuf()->pubsetbuf(write_buffer, sizeof(write_buffer));
 
-    auto result = session_->execute(RowsCommand{});
+    auto result = session_->execute(RecordsCommand::all_view_records());
 
     if (result.error) {
         throw std::runtime_error(*result.error);
     }
 
-    auto& rows_result = std::get<RowsResult>(result.payload.value());
+    auto& rows_result = std::get<RecordsResult>(result.payload.value());
 
     renderers::render_export(
         rows_result,

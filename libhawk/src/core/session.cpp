@@ -326,16 +326,34 @@ RecordCount Session::apply_sort(const SortKey& key) {
 
 // --- Command implementations ---
 
-CommandResult Session::execute_impl(const RowsCommand&) {
-    auto count = current_view_.size();
-    std::vector<Row> rows;
-    rows.reserve(count);
+CommandResult Session::execute_impl(const RecordsCommand& cmd) {
+    const RecordIndex total = cmd.raw ? row_count() : current_view_.size();
+    const RecordIndex start = cmd.start.value_or(0);
+    const RecordIndex end   = cmd.end.value_or(total);
 
-    for (RecordIndex i = 0; i < count; ++i) {
-        rows.emplace_back(make_row_from_view(i));
+    if (start >= end) {
+        return CommandResult::err(std::format(
+            "Start index {} must be less than end index {}", start, end
+        ));
+    }
+    if (end > total) {
+        return CommandResult::err(std::format(
+            "End index {} is out of range ({} has {} records)",
+            end,
+            cmd.raw ? "file" : "view",
+            total
+        ));
     }
 
-    return CommandResult::ok(RowsResult{
+    std::vector<Row> rows;
+    rows.reserve(end - start);
+    for (RecordIndex i = start; i < end; ++i) {
+        rows.emplace_back(cmd.raw
+            ? make_row_from_file(i)
+            : make_row_from_view(i));
+    }
+
+    return CommandResult::ok(RecordsResult{
         std::move(rows),
         &current_projection_
     });
@@ -436,48 +454,6 @@ CommandResult Session::execute_impl(const CountCommand&) {
     });
 }
 
-CommandResult Session::execute_impl(const PeekCommand& cmd) {
-    if (cmd.raw) {
-        if (cmd.index >= row_count()) {
-            return CommandResult::err(std::format(
-                "Index out of range: #{} (file has {} records)",
-                cmd.index + 1, row_count()
-            ));
-        }
-        return CommandResult::ok(RowsResult{
-            {make_row_from_file(cmd.index)},
-            &current_projection_
-        });
-    }
-    if (cmd.index >= current_view_.size()) {
-        return CommandResult::err(std::format(
-            "Index out of range: {} (view has {} records)",
-            cmd.index + 1, current_view_.size()
-        ));
-    }
-    return CommandResult::ok(RowsResult{
-        {make_row_from_view(cmd.index)},
-        &current_projection_
-    });
-}
-
-CommandResult Session::execute_impl(const HeadCommand& cmd) {
-    RecordCount max_visible_records = visible_row_count();
-    RecordCount count = std::min(cmd.max_records, max_visible_records);
-
-    std::vector<Row> rows;
-    rows.reserve(count);
-
-    for (RecordIndex i = 0; i < count; ++i) {
-        rows.emplace_back(make_row_from_view(i));
-    }
-
-    return CommandResult::ok(RowsResult{
-        std::move(rows),
-        &current_projection_
-    });
-}
-
 CommandResult Session::execute_impl(const TailCommand& cmd) {
     RecordCount max_visible_records = visible_row_count();
     RecordCount count = std::min(cmd.max_records, max_visible_records);
@@ -491,11 +467,11 @@ CommandResult Session::execute_impl(const TailCommand& cmd) {
         rows.emplace_back(make_row_from_view(i));
     }
 
-    return CommandResult::ok(RowsResult{
+    return CommandResult::ok(RecordsResult{
         std::move(rows),
         &current_projection_
     });
-}
+} // To be removed...
 
 CommandResult Session::execute_impl(const FilterCommand& cmd) {
     auto filter_result = prepare_filter(schema_, cmd, config_.case_sensitive);

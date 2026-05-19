@@ -14,7 +14,18 @@ namespace hawk { enum class FilterOp; }
 
 namespace hawk {
 
-struct RowsCommand {
+struct RecordsCommand {
+    std::optional<RecordIndex> start; // nullopt = 0
+    std::optional<RecordIndex> end;   // nullopt = view_size (exclusive)
+    bool                       raw = false;
+
+    static RecordsCommand all_view_records() {
+        return {std::nullopt, std::nullopt, false};
+    }
+
+    static RecordsCommand all_file_records() {
+        return {std::nullopt, std::nullopt, true};
+    }
 };
 
 struct ColumnsCommand {
@@ -61,20 +72,10 @@ struct DeselectCommand {
 struct CountCommand {
 };
 
-struct PeekCommand {
-    RecordIndex index;
-    bool        raw = false;
-};
-
-struct HeadCommand {
-    RecordCount max_records;
-    explicit HeadCommand(RecordCount count) : max_records(count) {}
-};
-
 struct TailCommand {
     RecordCount max_records;
     explicit TailCommand(RecordCount count) : max_records(count) {}
-};
+};  // To be removed in favor of RecordsCommand with start/end args
 
 struct FilterArgs {
     std::string column;                // empty when row_search is true
@@ -112,7 +113,7 @@ struct ResetCommand {
 };
 
 using LibCommand = std::variant<
-    RowsCommand,
+    RecordsCommand,
     ColumnsCommand,
     SetColumnNameCommand,
     SetColumnTypeCommand,
@@ -120,9 +121,7 @@ using LibCommand = std::variant<
     SelectAddCommand,
     DeselectCommand,
     CountCommand,
-    PeekCommand,
-    HeadCommand,
-    TailCommand,
+    TailCommand, // To be removed...
     FilterCommand,
     FilterExpandCommand,
     FilterExcludeCommand,

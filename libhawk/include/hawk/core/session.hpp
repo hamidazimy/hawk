@@ -60,7 +60,7 @@ private:
     Row make_row_from_file(RecordIndex file_index) const;
     Row make_row_from_view(RecordIndex view_index) const;
 
-    CommandResult execute_impl(const RowsCommand&);
+    CommandResult execute_impl(const RecordsCommand&);
     CommandResult execute_impl(const ColumnsCommand&);
     CommandResult execute_impl(const CountCommand&);
     CommandResult execute_impl(const SetColumnNameCommand&);
@@ -68,9 +68,7 @@ private:
     CommandResult execute_impl(const SelectCommand&);
     CommandResult execute_impl(const SelectAddCommand&);
     CommandResult execute_impl(const DeselectCommand&);
-    CommandResult execute_impl(const PeekCommand&);
-    CommandResult execute_impl(const HeadCommand&);
-    CommandResult execute_impl(const TailCommand&);
+    CommandResult execute_impl(const TailCommand&); // To be removed...
     CommandResult execute_impl(const FilterCommand&);
     CommandResult execute_impl(const FilterExpandCommand&);
     CommandResult execute_impl(const FilterExcludeCommand&);

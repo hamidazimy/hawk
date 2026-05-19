@@ -20,7 +20,7 @@ void render_result(
 );
 
 void render_export(
-    const hawk::RowsResult& result,
+    const hawk::RecordsResult& result,
     const hawk::Schema& schema,
     const hawk::SessionConfig& config,
     ExportMode mode,

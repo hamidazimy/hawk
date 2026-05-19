@@ -111,7 +111,7 @@ void render_row(
 // ----- Render functions implementations -----
 
 void render_impl(
-    const hawk::RowsResult& res,
+    const hawk::RecordsResult& res,
     const hawk::Schema& schema,
     std::ostream& sout
 ) {
@@ -248,7 +248,7 @@ void render_result(
 }
 
 void render_export(
-    const hawk::RowsResult& result,
+    const hawk::RecordsResult& result,
     const hawk::Schema& schema,
     const hawk::SessionConfig& config,
     ExportMode mode,

@@ -273,21 +273,45 @@ LibCommand count    (std::string_view args_line) {
 
 LibCommand peek     (std::string_view args_line) {
     if (args_line.empty()) {
-        return PeekCommand{0, false}; // default to first row of view
+        return RecordsCommand{0, 1}; // default to first row of view
     }
     bool raw = false;
-    std::string_view index_str = args_line;
-    if (args_line.starts_with('#')) {
+    std::string_view index_str = hawk::utils::trim(args_line);
+    if (index_str.starts_with('#')) {
         raw = true;
-        index_str = args_line.substr(1);
+        index_str = index_str.substr(1);
     }
+
+    // Check for range syntax N:M
+    auto colon = index_str.find(':');
+    if (colon != std::string_view::npos) {
+        std::int64_t start_val, end_val;
+        if (!hawk::utils::parse_int(index_str.substr(0, colon), start_val) || start_val < 1 ||
+            !hawk::utils::parse_int(index_str.substr(colon + 1), end_val)  || end_val < 1) {
+            throw std::invalid_argument{
+                std::format("Invalid range for peek command: {}", args_line)
+            };
+        }
+        if (start_val > end_val) {
+            throw std::invalid_argument{
+                std::format("Start must be <= end in peek range: {}", args_line)
+            };
+        }
+        // CLI is 1-based inclusive --> lib is 0-based exclusive
+        RecordIndex start = static_cast<RecordIndex>(start_val - 1);
+        RecordIndex end   = static_cast<RecordIndex>(end_val);
+        return RecordsCommand{start, end, raw};
+    }
+
+    // Single index
     std::int64_t index;
     if (!hawk::utils::parse_int(index_str, index) || index < 1) {
         throw std::invalid_argument{
             std::format("Invalid argument for peek command: {}", args_line)
         };
     }
-    return PeekCommand{static_cast<RecordIndex>(index - 1), raw};
+    RecordIndex idx = static_cast<RecordIndex>(index - 1);
+    return RecordsCommand{idx, idx + 1, raw};
 }
 
 LibCommand head     (std::string_view args_line) {
@@ -301,7 +325,7 @@ LibCommand head     (std::string_view args_line) {
         }
         count = static_cast<std::size_t>(n);
     }
-    return HeadCommand{count};
+    return RecordsCommand{0, static_cast<RecordIndex>(count)};
 }
 
 LibCommand tail     (std::string_view args_line) {
@@ -316,7 +340,7 @@ LibCommand tail     (std::string_view args_line) {
         count = static_cast<std::size_t>(n);
     }
     return TailCommand{count};
-}
+} // Note: TailCommand is a temporary solution until CliCommand refactor.
 
 LibCommand filter   (std::string_view args_line) {
     if (hawk::utils::trim(args_line) == "*") {

@@ -16,8 +16,8 @@ namespace hawk { class Projection; }
 
 namespace hawk {
 
-struct RowsResult {
-    std::vector<Row> rows;
+struct RecordsResult {
+    std::vector<Row>  rows;
     const Projection* projection; // Non-owning pointer to the projection used to project the rows.
                                   // RowsResult must not outlive the Session that owns the projection.
 };
@@ -54,7 +54,7 @@ struct ColumnsResult {
 };
 
 using ResultPayload = std::variant<
-    RowsResult,
+    RecordsResult,
     CountResult,
     FilterResult,
     SortResult,
