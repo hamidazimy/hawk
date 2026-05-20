@@ -34,6 +34,14 @@ public:
     const Schema& schema() const noexcept { return schema_; }
     const View& view() const noexcept { return current_view_; }
 
+    RecordCount file_row_count() const noexcept {
+        return source_->record_count() - static_cast<RecordCount>(config_.has_header);
+    }
+
+    RecordCount view_row_count() const noexcept {
+        return current_view_.size();
+    }
+
     CommandResult execute(const LibCommand& command);
 
 private:
@@ -47,12 +55,6 @@ private:
     RecordIndex to_source_index(RecordIndex file_index) const noexcept {
         return file_index + static_cast<RecordIndex>(config_.has_header);
     }
-
-    RecordCount row_count() const noexcept {
-        return source_->record_count() - static_cast<RecordCount>(config_.has_header);
-    }
-
-    RecordCount visible_row_count() const noexcept { return current_view_.size(); }
 
     std::string_view raw_record_from_file(RecordIndex file_index) const;
     std::string_view raw_record_from_view(RecordIndex view_index) const;

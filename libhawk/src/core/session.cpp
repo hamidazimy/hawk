@@ -43,7 +43,7 @@ Session::Session(
     , source_(std::move(source))
     , parser_(std::move(parser))
     , schema_(std::move(schema))
-    , current_view_(View::identity(row_count()))
+    , current_view_(View::identity(file_row_count()))
     , current_projection_(schema_.column_count())
 {}
 
@@ -256,7 +256,7 @@ RecordCount Session::apply_sort(const SortKey& key) {
 
     // Build key-index pairs — O(n) parses
     std::vector<std::pair<Key, RecordIndex>> keyed;
-    keyed.reserve(current_view_.size());
+    keyed.reserve(view_row_count());
 
     current_view_.for_each([&](RecordIndex idx) {
         auto field = make_row_from_file(idx).get(key.col_idx);
@@ -320,14 +320,14 @@ RecordCount Session::apply_sort(const SortKey& key) {
         sorted_indices.push_back(idx);
     }
 
-    current_view_ = View(std::move(sorted_indices), row_count());
+    current_view_ = View(std::move(sorted_indices), file_row_count());
     return unparseable;
 }
 
 // --- Command implementations ---
 
 CommandResult Session::execute_impl(const RecordsCommand& cmd) {
-    const RecordIndex total = cmd.raw ? row_count() : current_view_.size();
+    const RecordIndex total = cmd.raw ? file_row_count() : view_row_count();
     const RecordIndex start = cmd.start.value_or(0);
     const RecordIndex end   = cmd.end.value_or(total);
 
@@ -450,12 +450,12 @@ CommandResult Session::execute_impl(const DeselectCommand& cmd) {
 
 CommandResult Session::execute_impl(const CountCommand&) {
     return CommandResult::ok(CountResult{
-        current_view_.size()
+        view_row_count()
     });
 }
 
 CommandResult Session::execute_impl(const TailCommand& cmd) {
-    RecordCount max_visible_records = visible_row_count();
+    RecordCount max_visible_records = view_row_count();
     RecordCount count = std::min(cmd.max_records, max_visible_records);
 
     std::vector<Row> rows;
@@ -484,9 +484,9 @@ CommandResult Session::execute_impl(const FilterCommand& cmd) {
         }
     );
 
-    auto result = CommandResult::ok(FilterResult{current_view_.size(), 0});
+    auto result = CommandResult::ok(FilterResult{view_row_count(), 0});
     if (auto* col_pred = std::get_if<FilterPredicate>(&pred)) {
-        result.payload = FilterResult{current_view_.size(), col_pred->skipped};
+        result.payload = FilterResult{view_row_count(), col_pred->skipped};
         if (col_pred->skipped > 0) {
             result.warnings.push_back(std::format(
                 "{} row(s) skipped: field could not be parsed as {}",
@@ -504,12 +504,12 @@ CommandResult Session::execute_impl(const FilterExpandCommand& cmd) {
 
     // Build O(1) membership set from current view
     std::unordered_set<RecordIndex> existing;
-    existing.reserve(current_view_.size());
+    existing.reserve(view_row_count());
     current_view_.for_each([&](RecordIndex idx) { existing.insert(idx); });
 
     // Scan full file for matching rows not already in the view
     std::vector<RecordIndex> new_indices;
-    for (RecordIndex idx = 0; idx < row_count(); ++idx) {
+    for (RecordIndex idx = 0; idx < file_row_count(); ++idx) {
     if (!existing.contains(idx) && apply_predicate(pred, idx)) {
             new_indices.push_back(idx);
         }
@@ -520,20 +520,20 @@ CommandResult Session::execute_impl(const FilterExpandCommand& cmd) {
         // TODO: When a 'sort' command is added, re-apply the active sort order
         // instead of restoring file order here.
         std::vector<RecordIndex> merged;
-        merged.reserve(current_view_.size() + new_indices.size());
+        merged.reserve(view_row_count() + new_indices.size());
         current_view_.for_each([&](RecordIndex idx) { merged.push_back(idx); });
         merged.insert(merged.end(), new_indices.begin(), new_indices.end());
         std::sort(merged.begin(), merged.end());
-        current_view_ = View(std::move(merged), row_count());
+        current_view_ = View(std::move(merged), file_row_count());
 
         if (active_sort_) {
             apply_sort(*active_sort_); // re-apply active sort on top
         }
     }
 
-    auto result = CommandResult::ok(FilterResult{current_view_.size(), 0});
+    auto result = CommandResult::ok(FilterResult{view_row_count(), 0});
     if (auto* col_pred = std::get_if<FilterPredicate>(&pred)) {
-        result.payload = FilterResult{current_view_.size(), col_pred->skipped};
+        result.payload = FilterResult{view_row_count(), col_pred->skipped};
         if (col_pred->skipped > 0) {
             result.warnings.push_back(std::format(
                 "{} row(s) skipped: field could not be parsed as {}",
@@ -555,9 +555,9 @@ CommandResult Session::execute_impl(const FilterExcludeCommand& cmd) {
         }
     );
 
-    auto result = CommandResult::ok(FilterResult{current_view_.size(), 0});
+    auto result = CommandResult::ok(FilterResult{view_row_count(), 0});
     if (auto* col_pred = std::get_if<FilterPredicate>(&pred)) {
-        result.payload = FilterResult{current_view_.size(), col_pred->skipped};
+        result.payload = FilterResult{view_row_count(), col_pred->skipped};
         if (col_pred->skipped > 0) {
             result.warnings.push_back(std::format(
                 "{} row(s) skipped: field could not be parsed as {}",
@@ -578,7 +578,7 @@ CommandResult Session::execute_impl(const SortCommand& cmd) {
     active_sort_ = SortKey{*col_idx, cmd.is_desc};
 
     return CommandResult::ok(SortResult{
-        current_view_.size(),
+        view_row_count(),
         unparseable,
         cmd.column,
         cmd.is_desc
@@ -648,7 +648,7 @@ CommandResult Session::execute_impl(const DistinctCommand& cmd) {
     }
 
     // High cardinality warning — before moving entries, before prepending empty
-    const RecordCount total_rows = current_view_.size();
+    const RecordCount total_rows = view_row_count();
     const RecordCount distinct_count = entries.size() + (empty_count > 0 ? 1 : 0);
 
     // Prepend empty entry — always first regardless of sort mode
