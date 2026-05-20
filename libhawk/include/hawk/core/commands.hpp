@@ -87,9 +87,23 @@ struct FilterArgs {
         : column(std::move(column)), row_search(row_search), op(op), value(std::move(value)) {}
 };
 
-struct FilterCommand        : FilterArgs { using FilterArgs::FilterArgs; };
-struct FilterExpandCommand  : FilterArgs { using FilterArgs::FilterArgs; };
-struct FilterExcludeCommand : FilterArgs { using FilterArgs::FilterArgs; };
+struct FilterCommand : FilterArgs {
+    using FilterArgs::FilterArgs;
+    explicit FilterCommand(FilterArgs args)
+        : FilterArgs(std::move(args)) {}
+};
+
+struct FilterExpandCommand : FilterArgs {
+    using FilterArgs::FilterArgs;
+    explicit FilterExpandCommand(FilterArgs args)
+        : FilterArgs(std::move(args)) {}
+};
+
+struct FilterExcludeCommand : FilterArgs {
+    using FilterArgs::FilterArgs;
+    explicit FilterExcludeCommand(FilterArgs args)
+        : FilterArgs(std::move(args)) {}
+};
 
 struct SortCommand {
     std::string column;
