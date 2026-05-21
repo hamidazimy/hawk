@@ -1,8 +1,8 @@
 #include "repl.hpp"
 
-#include <cli/command_info.hpp>
-#include <cli/cli_commands.hpp>
-#include <cli/command_tables.hpp>
+#include <cli/commands.hpp>
+#include <cli/command_table.hpp>
+#include <cli/parsers.hpp>
 #include <cli/renderers.hpp>
 #include <constants.hpp>
 #include <helpers/console.hpp>
@@ -12,7 +12,8 @@
 
 #include <replxx.hxx>
 
-#include <array>
+#include <algorithm>
+#include <cstdint>
 #include <exception>
 #include <format>
 #include <fstream>
@@ -23,9 +24,22 @@
 #include <string>
 #include <string_view>
 #include <variant>
+#include <vector>
 #include <utility>
 
 namespace hawk::cli {
+
+namespace {
+
+bool matches(const CommandInfo& info, std::string_view cmd) {
+    if (info.name == cmd) return true;
+    for (const auto& alias : info.aliases) {
+        if (alias == cmd) return true;
+    }
+    return false;
+}
+
+} // namespace
 
 REPL::REPL(std::unique_ptr<hawk::Session> session)
     : session_(std::move(session))
@@ -39,14 +53,6 @@ REPL::REPL(std::unique_ptr<hawk::Session> session)
 void REPL::run() {
     std::cout << sgr::colorize(std::string(constants::ASCII_LOGO), "#149") << std::endl;
     std::cout << constants::WELCOME_MSG << std::endl;
-
-    const CliCommandInfo* help_command_info = nullptr;
-    for (const auto& info : cli_command_table) {
-        if (info.name == "help") {
-            help_command_info = &info;
-            break;
-        }
-    }
 
     editor_.set_max_history_size(512);
 
@@ -82,49 +88,34 @@ void REPL::run() {
                 ? std::string_view{}
                 : line.substr(space_pos + 1);
 
-        // ---- Check for "--help" flag ----
-        if (utils::trim(args) == "--help" && help_command_info) {
-            auto help_command = help_command_info->parser(cmd);
-            this->execute(help_command);
+        // Intercept --help before dispatch
+        if (utils::trim(args) == "--help") {
+            try {
+                auto help = parsers::help(cmd);
+                this->execute(help);
+            } catch (const std::exception& e) {
+                renderers::render_error(e.what());
+            }
             continue;
         }
 
-        // ---- Try CLI commands ----
+        // Dispatch loop
         bool handled = false;
-        bool exit_requested = false;
 
-        for (const auto& info : cli_command_table) {
-            if (info.name == cmd) {
-                try {
+        try {
+            for (const auto& info : command_table) {
+                if (matches(info, cmd)) {
                     auto cli_cmd = info.parser(args);
-                    exit_requested = !this->execute(cli_cmd);
-                } catch (const std::exception& e) {
-                    renderers::render_error(e.what());
+                    this->execute(cli_cmd);
+                    handled = true;
+                    break;
                 }
-                handled = true;
-                break;
             }
-        }
-
-        if (exit_requested)
+        } catch (const ExitRequested&) {
             break;
-
-        if (handled)
-            continue;
-
-        // ---- Try LIB commands ----
-        for (const auto& info : lib_command_table) {
-            if (info.name == cmd) {
-                try {
-                    auto lib_cmd = info.parser(args);
-                    auto result = session_->execute(lib_cmd);
-                    renderers::render_result(result, session_->schema());
-                } catch (const std::exception& e) {
-                    renderers::render_error(e.what());
-                }
-                handled = true;
-                break;
-            }
+        } catch (const std::exception& e) {
+            renderers::render_error(e.what());
+            handled = true;
         }
 
         if (!handled) {
@@ -139,21 +130,157 @@ std::string REPL::prompt() const {
     return std::string(constants::PROMPT);
 }
 
-bool REPL::execute(const CliCommand& command) {
-    return std::visit(
-        [this](const auto& cmd) -> bool {
-            return execute_impl(cmd);
+void REPL::dispatch(const hawk::LibCommand& cmd, const renderers::RenderOptions& options) {
+    auto ctx = make_ctx();
+    auto result = session_->execute(cmd);
+    renderers::render_result(ctx, result, options);
+}
+
+void REPL::execute(const CliCommand& command) {
+    std::visit(
+        [this](const auto& cmd) {
+            execute_impl(cmd);
         },
         command
     );
 }
 
-bool REPL::execute_impl(const CliCommandExport& cmd) {
+// --- Implementations for each command ---
+
+void REPL::execute_impl(const CliColumns&) {
+    dispatch(ColumnsCommand{});
+}
+
+void REPL::execute_impl(const CliSetName& cmd) {
+    dispatch(SetColumnNameCommand{cmd.old_name, cmd.new_name});
+}
+
+void REPL::execute_impl(const CliSetType& cmd) {
+    dispatch(SetColumnTypeCommand{cmd.column, cmd.type, cmd.dt_pattern});
+}
+
+void REPL::execute_impl(const CliSelect& cmd) {
+    dispatch(SelectCommand{cmd.columns});
+}
+
+void REPL::execute_impl(const CliSelectAdd& cmd) {
+    dispatch(SelectAddCommand{cmd.columns});
+}
+
+void REPL::execute_impl(const CliDeselect& cmd) {
+    dispatch(DeselectCommand{cmd.columns});
+}
+
+void REPL::execute_impl(const CliCount&) {
+    dispatch(CountCommand{});
+}
+
+void REPL::execute_impl(const CliPeek& cmd) {
+    hawk::RecordsCommand records_cmd;
+    if (cmd.arg.empty()) {
+        records_cmd = hawk::RecordsCommand{0, 1, false};
+    } else {
+        std::string_view index_str = cmd.arg;
+        bool raw = false;
+
+        if (index_str.starts_with('#')) {
+            raw = true;
+            index_str = index_str.substr(1);
+        }
+
+        const RecordIndex total = raw ? session_->file_row_count() : session_->view_row_count();
+
+        // Check for range syntax N:M
+        auto colon = index_str.find(':');
+        if (colon != std::string_view::npos) {
+            std::int64_t start_val, end_val;
+            if (!hawk::utils::parse_int(index_str.substr(0, colon), start_val) || start_val < 1 ||
+                !hawk::utils::parse_int(index_str.substr(colon + 1), end_val)  || end_val < 1) {
+                renderers::render_error(
+                    std::format("Invalid range for peek: {}", cmd.arg), std::cout);
+                return;
+            }
+            if (start_val > end_val) {
+                renderers::render_error(
+                    std::format("Start must be <= end in peek range: {}", cmd.arg), std::cout);
+                return;
+            }
+            // CLI 1-based inclusive → lib 0-based exclusive
+            RecordIndex start = static_cast<RecordIndex>(start_val - 1);
+            RecordIndex end   = static_cast<RecordIndex>(end_val);
+            // Clamp end to total — CLI is user-friendly
+            end = std::min(end, total);
+            records_cmd = hawk::RecordsCommand{start, end, raw};
+        } else {
+            // Single index — support negative for last record
+            std::int64_t index;
+            if (!hawk::utils::parse_int(index_str, index) || index == 0) {
+                renderers::render_error(
+                    std::format("Invalid argument for peek: {}", cmd.arg), std::cout);
+                return;
+            }
+            RecordIndex idx;
+            if (index < 0) {
+                // Negative: from end
+                if (static_cast<RecordIndex>(-index) > total) {
+                    renderers::render_error(
+                        std::format("Index {} is out of range ({} records)",
+                            index, total), std::cout);
+                    return;
+                }
+                idx = total + static_cast<RecordIndex>(index);
+            } else {
+                idx = static_cast<RecordIndex>(index - 1);
+            }
+            records_cmd = hawk::RecordsCommand{idx, idx + 1, raw};
+        }
+    }
+    dispatch(records_cmd, {.display_mode = cmd.mode});
+}
+
+void REPL::execute_impl(const CliHead& cmd) {
+    auto size = session_->view_row_count();
+    auto end = std::min(static_cast<RecordIndex>(cmd.n), size);
+    dispatch(hawk::RecordsCommand{0, end}, {.display_mode=cmd.mode});
+}
+
+void REPL::execute_impl(const CliTail& cmd) {
+    auto size = session_->view_row_count();
+    auto start = size > cmd.n ? size - cmd.n : 0;
+    dispatch(hawk::RecordsCommand{start, size}, {.display_mode=cmd.mode});
+}
+
+void REPL::execute_impl(const CliFilter& cmd) {
+    dispatch(FilterCommand{cmd.args});
+}
+
+void REPL::execute_impl(const CliFilterExp& cmd) {
+    dispatch(FilterExpandCommand{cmd.args});
+}
+
+void REPL::execute_impl(const CliFilterExc& cmd) {
+    dispatch(FilterExcludeCommand{cmd.args});
+}
+
+void REPL::execute_impl(const CliSort& cmd) {
+    dispatch(SortCommand{cmd.column, cmd.is_desc});
+}
+
+void REPL::execute_impl(const CliDistinct& cmd) {
+    dispatch(DistinctCommand{cmd.column, cmd.sort_by_value, cmd.sort_desc});
+}
+
+void REPL::execute_impl(const CliReset& cmd) {
+    dispatch(ResetCommand{cmd.view, cmd.proj, cmd.sort});
+}
+
+void REPL::execute_impl(const CliExport& cmd) {
     std::ofstream fout(cmd.path, std::ios::binary);
     if (!fout) {
-        throw std::ios_base::failure(std::format(
+        renderers::render_error(std::format(
             "Cannot open file '{}'", cmd.path
         ));
+        return;
     }
 
     static char write_buffer[4 * 1024 * 1024];
@@ -162,17 +289,18 @@ bool REPL::execute_impl(const CliCommandExport& cmd) {
     auto result = session_->execute(RecordsCommand::all_view_records());
 
     if (result.error) {
-        throw std::runtime_error(*result.error);
+        renderers::render_error(*result.error);
+        return;
     }
 
-    auto& rows_result = std::get<RecordsResult>(result.payload.value());
+    auto& records_result = std::get<RecordsResult>(result.payload.value());
 
+    renderers::RenderContext export_ctx{session_->schema(), 0, fout};
     renderers::render_export(
-        rows_result,
-        session_->schema(),
+        export_ctx,
+        records_result,
         session_->config(),
-        cmd.mode,
-        fout
+        cmd.mode
     );
 
     // Surface any warnings to console
@@ -180,8 +308,8 @@ bool REPL::execute_impl(const CliCommandExport& cmd) {
 
     // Add projection warning if applicable
     if (cmd.mode == ExportMode::Full &&
-        rows_result.projection &&
-        !rows_result.projection->is_identity()) {
+        records_result.projection &&
+        !records_result.projection->is_identity()) {
         renderers::render_warning(
             "Exported full row — active column selection not applied.\n\t"
             "Use --projected to export current projection.",
@@ -190,30 +318,36 @@ bool REPL::execute_impl(const CliCommandExport& cmd) {
     }
 
     renderers::render_execution_time(result.execution_time_ms, std::cout);
-
-    return true;
 }
 
-bool REPL::execute_impl(const CliCommandHelp& cmd) {
+void REPL::execute_impl(const CliHelp& cmd) {
     if (cmd.command_name) {
         auto render_command_detail = [](const auto& info) {
             std::cout
                 << sgr::colorize("Usage: ",   "#153")
                 << sgr::colorize(info.name,   "#448") << " "
-                << sgr::colorize(info.usage,  "#844") << "\n\n"
-                << sgr::colorize(info.detail, "#444") << "\n";
+                << sgr::colorize(info.usage,  "#844") << "\n"
+                << sgr::colorize(info.detail, "#444") << std::endl;
+            if (!info.aliases.empty()) {
+                std::cout << "\n" << sgr::colorize("Aliases:", "#153");
+                for (const auto& alias : info.aliases) {
+                    std::cout << " " << sgr::colorize(alias, "#448");
+                }
+                std::cout << std::endl;
+            }
         };
 
-        for (auto & info : cli_command_table) {
-            if (info.name == *cmd.command_name) {
+        for (auto & info : command_table) {
+            if (matches(info, *cmd.command_name)) {
+                if (info.name != *cmd.command_name) {
+                    std::cout << sgr::colorize(
+                        std::format("Note: '{}' is an alias for '{}'.\n\n",
+                            *cmd.command_name, info.name),
+                        "#a44"
+                    );
+                }
                 render_command_detail(info);
-                return true;
-            }
-        }
-        for (auto & info : lib_command_table) {
-            if (info.name == *cmd.command_name) {
-                render_command_detail(info);
-                return true;
+                return;
             }
         }
         renderers::render_error("No such command: " + *cmd.command_name);
@@ -223,24 +357,12 @@ bool REPL::execute_impl(const CliCommandHelp& cmd) {
                 << sgr::rgb("#448") << std::right << std::setw(10) << info.name
                 << sgr::rgb("#844") << " " << info.usage << "\n"
                 << sgr::rgb("#444") << std::setw(10) << "" << " " << std::left << info.description
-                << sgr::rst() << "\n\n";
+                << sgr::rst() << "\n" << std::endl;
         };
-
-        std::cout << sgr::colorize("Built-in Commands:\n\n", "#153");
-        for (const auto& info : cli_command_table) {
-            render_command_summary(info);
-        }
-        std::cout << sgr::colorize("Library Commands:\n\n", "#153");
-        for (const auto& info : lib_command_table) {
+        for (const auto& info : command_table) {
             render_command_summary(info);
         }
     }
-
-    return true; // continue REPL
-}
-
-bool REPL::execute_impl(const CliCommandExit&) {
-    return false;
 }
 
 } // namespace hawk::cli

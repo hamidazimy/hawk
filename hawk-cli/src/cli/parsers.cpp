@@ -1,12 +1,13 @@
 #include "parsers.hpp"
 
-#include <cli/cli_commands.hpp>
+#include <cli/commands.hpp>
 #include <helpers/utils.hpp>
+
+#include <hawk/hawk.hpp>
 
 #include <algorithm>
 #include <format>
 #include <optional>
-#include <cstddef>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
@@ -71,26 +72,26 @@ std::vector<std::string> parse_select_column_list(std::string_view args_line) {
     return cols;
 }
 
-LibCommand set_name(std::string_view args_line) {
+CliCommand set_name(std::string_view args_line) {
     auto args = utils::tokenize(args_line);
     if (args.size() != 2) {
         throw std::invalid_argument{
             std::format(
-                "Invalid arguments for set name command: {} \n"
+                "Invalid arguments for set name command: {}""\n"
                 "Usage: set name <old_name> <new_name>",
                 args_line
             )
         };
     }
-    return SetColumnNameCommand{std::string(args[0]), std::string(args[1])};
+    return CliSetName{std::move(args[0]), std::move(args[1])};
 }
 
-LibCommand set_type(std::string_view args_line) {
+CliCommand set_type(std::string_view args_line) {
     auto args = utils::tokenize(args_line);
     if (args.size() < 2) {
         throw std::invalid_argument{
             std::format(
-                "Invalid arguments for set type command: {} \n"
+                "Invalid arguments for set type command: {}""\n"
                 "Usage: set type <column> <type> (<datetime format>)",
                 args_line
             )
@@ -104,8 +105,10 @@ LibCommand set_type(std::string_view args_line) {
         type = ColumnType::DateTime;
         if (args.size() != 3) {
             throw std::invalid_argument{
-                "Setting a column to datetime requires a pattern. "
-                "Usage: set type <column> datetime \"<pattern>\""
+                std::format(
+                    "Setting a column to datetime requires a pattern.""\n"
+                    "Usage: set type <column> datetime \"<pattern>\""
+                )
             };
         }
         auto pattern = std::string(args[2]);
@@ -135,14 +138,17 @@ LibCommand set_type(std::string_view args_line) {
             )
         };
     }
-    return SetColumnTypeCommand{column, type, datetime_pattern};
+    return CliSetType{std::move(args[0]), type, datetime_pattern};
 }
 
 hawk::FilterArgs parse_filter_args(std::string_view args_line) {
     auto args = utils::tokenize(args_line);
     if (args.size() != 3) {
         throw std::invalid_argument{
-            std::format("Expected <column> <op> <value>, got: {}", args_line)
+            std::format(
+                "Expected <column> <op> <value>, got: {}",
+                args_line
+            )
         };
     }
     hawk::FilterOp op;
@@ -167,42 +173,38 @@ hawk::FilterArgs parse_filter_args(std::string_view args_line) {
     }
     if (args[0] == "$row" && op != hawk::FilterOp::HAS) {
         throw std::invalid_argument{
-            std::format("Only 'has' operator is supported for $row searches. Got: {}", args[1])
+            std::format(
+                "Only 'has' operator is supported for $row searches. Got: {}",
+                args[1]
+            )
         };
     }
     return hawk::FilterArgs{std::string(args[0]), args[0] == "$row", op, std::string(args[2])};
 }
 
-template <typename FltrCmd>
-FltrCmd parse_filter_command(std::string_view args_line) {
-    auto fltrargs = parse_filter_args(args_line);
-    return FltrCmd{
-        std::move(fltrargs.column),
-        fltrargs.row_search,
-        fltrargs.op,
-        std::move(fltrargs.value)
-    };
-}
-
 } // namespace
 
-LibCommand columns  (std::string_view args_line) {
+CliCommand columns      (std::string_view args_line) {
     if (!args_line.empty()) {
         throw std::invalid_argument{
-            std::format("columns command does not take any arguments. Got: {}", args_line)
+            std::format(
+                "columns command does not take any arguments. Got: {}",
+                args_line
+            )
         };
     }
-    return ColumnsCommand{};
+    return CliColumns{};
 }
 
-LibCommand set      (std::string_view args_line) {
+CliCommand set          (std::string_view args_line) {
     auto args = utils::tokenize(args_line);
     if (args.empty()) {
         throw std::invalid_argument{
             std::format(
-                "set command requires additional arguments. Got: {} \n"
-                "Usage: set type|name <args>"
-            , args_line)
+                "set command requires additional arguments. Got: {}""\n"
+                "Usage: set type|name <args>",
+                args_line
+            )
         };
     }
 
@@ -217,7 +219,7 @@ LibCommand set      (std::string_view args_line) {
     } else {
         throw std::invalid_argument{
             std::format(
-                "Unknown set subcommand: {}\n"
+                "Unknown set subcommand: {}""\n"
                 "Supported: set type|name <args>",
                 subcommand
             )
@@ -225,149 +227,160 @@ LibCommand set      (std::string_view args_line) {
     }
 }
 
-LibCommand select   (std::string_view args_line) {
+CliCommand select       (std::string_view args_line) {
     if (hawk::utils::trim(args_line) == "*") {
-        return ResetCommand{.proj = true};
+        return CliReset{.proj = true};
     }
     auto cols = parse_select_column_list(args_line);
     if (cols.empty()) {
         throw std::invalid_argument{
-            "select requires at least one column.\n"
+            "select requires at least one column.""\n"
             "Usage: select <col1>,<col2>,... $colX $colN:M"
         };
     }
-    return SelectCommand{std::move(cols)};
+    return CliSelect{std::move(cols)};
 }
 
-LibCommand select_add(std::string_view args_line) {
-
+CliCommand select_add   (std::string_view args_line) {
     auto cols = parse_select_column_list(args_line);
     if (cols.empty()) {
         throw std::invalid_argument{
-            "select+ requires at least one column.\n"
+            "select+ requires at least one column.""\n"
             "Usage: select+ <col1>,<col2>,... $colX $colN:M"
         };
     }
-    return SelectAddCommand{std::move(cols)};
+    return CliSelectAdd{std::move(cols)};
 }
 
-LibCommand select_rem(std::string_view args_line) {
+CliCommand select_rem   (std::string_view args_line) {
     auto cols = parse_select_column_list(args_line);
     if (cols.empty()) {
         throw std::invalid_argument{
-            "select- requires at least one column.\n"
+            "select- requires at least one column.""\n"
             "Usage: select- <col1>,<col2>,... $colX $colN:M"
         };
     }
-    return DeselectCommand{std::move(cols)};
+    return CliDeselect{std::move(cols)};
 }
 
-LibCommand count    (std::string_view args_line) {
+CliCommand count        (std::string_view args_line) {
     if (!args_line.empty()) {
         throw std::invalid_argument{
-            std::format("count command does not take any arguments. Got: {}", args_line)
+            std::format(
+                "count command does not take any arguments. Got: {}",
+                args_line
+            )
         };
     }
-    return CountCommand{};
+    return CliCount{};
 }
 
-LibCommand peek     (std::string_view args_line) {
-    if (args_line.empty()) {
-        return RecordsCommand{0, 1}; // default to first row of view
-    }
-    bool raw = false;
-    std::string_view index_str = hawk::utils::trim(args_line);
-    if (index_str.starts_with('#')) {
-        raw = true;
-        index_str = index_str.substr(1);
-    }
+CliCommand peek         (std::string_view args_line) {
+    DisplayMode mode = DisplayMode::Vertical;
 
-    // Check for range syntax N:M
-    auto colon = index_str.find(':');
-    if (colon != std::string_view::npos) {
-        std::int64_t start_val, end_val;
-        if (!hawk::utils::parse_int(index_str.substr(0, colon), start_val) || start_val < 1 ||
-            !hawk::utils::parse_int(index_str.substr(colon + 1), end_val)  || end_val < 1) {
-            throw std::invalid_argument{
-                std::format("Invalid range for peek command: {}", args_line)
-            };
-        }
-        if (start_val > end_val) {
-            throw std::invalid_argument{
-                std::format("Start must be <= end in peek range: {}", args_line)
-            };
-        }
-        // CLI is 1-based inclusive --> lib is 0-based exclusive
-        RecordIndex start = static_cast<RecordIndex>(start_val - 1);
-        RecordIndex end   = static_cast<RecordIndex>(end_val);
-        return RecordsCommand{start, end, raw};
-    }
-
-    // Single index
-    std::int64_t index;
-    if (!hawk::utils::parse_int(index_str, index) || index < 1) {
-        throw std::invalid_argument{
-            std::format("Invalid argument for peek command: {}", args_line)
-        };
-    }
-    RecordIndex idx = static_cast<RecordIndex>(index - 1);
-    return RecordsCommand{idx, idx + 1, raw};
-}
-
-LibCommand head     (std::string_view args_line) {
-    std::size_t count = 10; // default
-    if (!args_line.empty()) {
-        std::int64_t n;
-        if (!hawk::utils::parse_int(args_line, n) || n < 1) {
-            throw std::invalid_argument{
-                std::format("Invalid argument for head command: {}", args_line)
-            };
-        }
-        count = static_cast<std::size_t>(n);
-    }
-    return RecordsCommand{0, static_cast<RecordIndex>(count)};
-}
-
-LibCommand tail     (std::string_view args_line) {
-    std::size_t count = 10; // default
-    if (!args_line.empty()) {
-        std::int64_t n;
-        if (!hawk::utils::parse_int(args_line, n) || n < 1) {
-            throw std::invalid_argument{
-                std::format("Invalid argument for tail command: {}", args_line)
-            };
-        }
-        count = static_cast<std::size_t>(n);
-    }
-    return TailCommand{count};
-} // Note: TailCommand is a temporary solution until CliCommand refactor.
-
-LibCommand filter   (std::string_view args_line) {
-    if (hawk::utils::trim(args_line) == "*") {
-        return ResetCommand{.view = true};
-    }
-    return parse_filter_command<FilterCommand>(args_line);
-}
-
-LibCommand filter_exp(std::string_view args_line) {
-    return parse_filter_command<FilterExpandCommand>(args_line);
-}
-
-LibCommand filter_exc(std::string_view args_line) {
-    return parse_filter_command<FilterExcludeCommand>(args_line);
-}
-
-LibCommand sort     (std::string_view args_line) {
     auto args = utils::tokenize(args_line);
-    if (args.empty() || args.size() > 2) {
+    std::string arg;
+
+    for (const auto& token : args) {
+        if (token == "--untruncated" || token == "-u") {
+            mode = DisplayMode::VerticalUntruncated;
+        } else if (arg.empty()) {
+            arg = std::string(token);
+        } else {
+            throw std::invalid_argument{
+                std::format(
+                    "Unexpected argument for peek command: {}",
+                    token
+                )
+            };
+        }
+    }
+
+    return CliPeek{std::move(arg), mode};
+}
+
+CliCommand head         (std::string_view args_line) {
+    RecordCount count = 10;
+    DisplayMode mode  = DisplayMode::Horizontal;
+
+    auto args = utils::tokenize(args_line);
+    for (const auto& arg : args) {
+        if (arg == "--vertical" || arg == "-v") {
+            if (mode == DisplayMode::Horizontal)
+                mode = DisplayMode::Vertical;
+        } else if (arg == "--untruncated" || arg == "-u") {
+            mode = DisplayMode::VerticalUntruncated;
+        } else {
+            std::int64_t n;
+            if (!hawk::utils::parse_int(arg, n) || n < 1) {
+                throw std::invalid_argument{
+                    std::format(
+                        "Invalid argument for head command: {}",
+                        arg
+                    )
+                };
+            }
+            count = static_cast<RecordCount>(n);
+        }
+    }
+
+    return CliHead{count, mode};
+}
+
+CliCommand tail         (std::string_view args_line) {
+    RecordCount count = 10;
+    DisplayMode mode  = DisplayMode::Horizontal;
+
+    auto args = utils::tokenize(args_line);
+    for (const auto& arg : args) {
+        if (arg == "--vertical" || arg == "-v") {
+            if (mode == DisplayMode::Horizontal)
+                mode = DisplayMode::Vertical;
+        } else if (arg == "--untruncated" || arg == "-u") {
+            mode = DisplayMode::VerticalUntruncated;
+        } else {
+            std::int64_t n;
+            if (!hawk::utils::parse_int(arg, n) || n < 1) {
+                throw std::invalid_argument{
+                    std::format(
+                        "Invalid argument for tail command: {}",
+                        arg
+                    )
+                };
+            }
+            count = static_cast<RecordCount>(n);
+        }
+    }
+
+    return CliTail{count, mode};
+}
+
+CliCommand filter       (std::string_view args_line) {
+    if (hawk::utils::trim(args_line) == "*") {
+        return CliReset{.view = true};
+    }
+    return CliFilter{parse_filter_args(args_line)};
+}
+
+CliCommand filter_exp   (std::string_view args_line) {
+    return CliFilterExp{parse_filter_args(args_line)};
+}
+
+CliCommand filter_exc   (std::string_view args_line) {
+    return CliFilterExc{parse_filter_args(args_line)};
+}
+
+CliCommand sort         (std::string_view args_line) {
+    auto args = utils::tokenize(args_line);
+    if (args.empty()) {
         throw std::invalid_argument{
-            "Usage: sort <column> [--desc|-r]"
+            "Usage: sort <column> [--desc|-r] or sort --default"
         };
     }
 
-    if (args.size() == 1 && args[0] == "--default") {
-        return ResetCommand{.sort = true};
-    }
+    if (args.size() == 1)
+        if (args[0] == "--default" || args[0] == "-d")
+            return CliReset{.sort = true};
 
     bool is_desc = false;
     std::string column;
@@ -379,23 +392,28 @@ LibCommand sort     (std::string_view args_line) {
             column = arg;
         } else {
             throw std::invalid_argument{
-                std::format("Unexpected argument for sort command: {}", arg)
+                std::format(
+                    "Unexpected argument for sort command: {}",
+                    arg
+                )
             };
         }
     }
 
     if (column.empty()) {
-        throw std::invalid_argument{"sort requires a column name."};
+        throw std::invalid_argument{
+            "sort requires a column name."
+        };
     }
 
-    return SortCommand{std::move(column), is_desc};
+    return CliSort{std::move(column), is_desc};
 }
 
-LibCommand distinct (std::string_view args_line) {
+CliCommand distinct     (std::string_view args_line) {
     auto args = utils::tokenize(args_line);
     if (args.empty()) {
         throw std::invalid_argument{
-            "distinct requires a column name.\n"
+            "distinct requires a column name.""\n"
             "Usage: distinct <column> [-v|--sort-by-value] [-r|--desc]"
         };
     }
@@ -413,38 +431,46 @@ LibCommand distinct (std::string_view args_line) {
             column = arg;
         } else {
             throw std::invalid_argument{
-                std::format("Unexpected argument for distinct command: {}", arg)
+                std::format(
+                    "Unexpected argument for distinct command: {}",
+                    arg
+                )
             };
         }
     }
 
     if (column.empty()) {
-        throw std::invalid_argument{"distinct requires a column name."};
+        throw std::invalid_argument{
+            "distinct requires a column name."
+        };
     }
 
-    return DistinctCommand{std::move(column), sort_by_value, sort_desc};
+    return CliDistinct{std::move(column), sort_by_value, sort_desc};
 }
 
-LibCommand reset    (std::string_view args_line) {
+CliCommand reset        (std::string_view args_line) {
     auto args = utils::tokenize(args_line);
 
     if (args.empty()) {
-        return ResetCommand::all();
+        return CliReset{true, true, true};
     }
 
-    ResetCommand cmd;
+    CliReset cmd;
     for (const auto& arg : args) {
-        if      (arg == "--view") cmd.view = true;
-        else if (arg == "--proj") cmd.proj = true;
-        else if (arg == "--sort") cmd.sort = true;
+        if      (arg == "--view" || arg == "-v") cmd.view = true;
+        else if (arg == "--proj" || arg == "-p") cmd.proj = true;
+        else if (arg == "--sort" || arg == "-s") cmd.sort = true;
         else throw std::invalid_argument{
-            std::format("Unknown argument for reset command: {}", arg)
+            std::format(
+                "Unknown argument for reset command: {}",
+                arg
+            )
         };
     }
     return cmd;
 }
 
-CliCommand eXport   (std::string_view args_line) {
+CliCommand eXport       (std::string_view args_line) {
     if (args_line.empty()) {
         throw std::invalid_argument{
             "Please provide a path."
@@ -455,42 +481,55 @@ CliCommand eXport   (std::string_view args_line) {
     std::string path;
 
     for (const auto& arg : args) {
-        if (arg == "--projected") {
+        if (arg == "--projected" || arg == "-p") {
             mode = ExportMode::Projected;
-        } else if (arg == "--full") {
-            if (mode == ExportMode::Projected) {
-                throw std::invalid_argument{
-                    "Cannot specify both --full and --projected."
-                };
-            }
-            mode = ExportMode::Full;
         } else if (path.empty()) {
             path = std::string(arg);
         } else {
             throw std::invalid_argument{
-                std::format("Unexpected argument for export command: {}", arg)
+                std::format(
+                    "Unexpected argument for export command: {}",
+                    arg
+                )
             };
         }
     }
 
     if (path.empty()) {
-        throw std::invalid_argument{"Please provide a path."};
+        throw std::invalid_argument{
+            "Please provide a path."
+        };
     }
 
-    return CliCommandExport{std::move(path), mode};
+    return CliExport{std::move(path), mode};
 }
 
-CliCommand help     (std::string_view args_line) {
+CliCommand help         (std::string_view args_line) {
     if (args_line.empty()) {
-        return CliCommandHelp{std::nullopt};
+        return CliHelp{std::nullopt};
     }
     auto args = utils::tokenize(args_line);
     if (args.size() != 1) {
         throw std::invalid_argument{
-            std::format("help command takes at most one argument. Got: {}", args_line)
+            std::format(
+                "help command takes at most one argument. Got: {}",
+                args_line
+            )
         };
     }
-    return CliCommandHelp{std::optional<std::string>{args[0]}};
+    return CliHelp{std::optional<std::string>{args[0]}};
+}
+
+CliCommand exit         (std::string_view args_line) {
+    if (!args_line.empty()) {
+        throw std::invalid_argument{
+            std::format(
+                "exit command does not take any arguments. Got: {}",
+                args_line
+            )
+        };
+    }
+    return CliExit{};
 }
 
 } // namespace parsers

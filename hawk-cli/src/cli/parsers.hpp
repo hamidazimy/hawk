@@ -1,36 +1,31 @@
 #ifndef HAWK_CLI_PARSERS_HPP
 #define HAWK_CLI_PARSERS_HPP
 
-#include <cli/cli_commands.hpp>
-
-#include <hawk/hawk.hpp>
+#include <cli/commands.hpp>
 
 #include <string_view>
 
 namespace hawk::cli {
 namespace parsers {
 
-// Lib command parsers
-LibCommand columns  (std::string_view);
-LibCommand set      (std::string_view);
-LibCommand select   (std::string_view);
-LibCommand select_add(std::string_view);
-LibCommand select_rem(std::string_view);
-LibCommand count    (std::string_view);
-LibCommand peek     (std::string_view);
-LibCommand head     (std::string_view);
-LibCommand tail     (std::string_view);
-LibCommand filter   (std::string_view);
-LibCommand filter_exp(std::string_view);
-LibCommand filter_exc(std::string_view);
-LibCommand sort     (std::string_view);
-LibCommand distinct (std::string_view);
-LibCommand reset    (std::string_view);
-
-// Cli command parsers
-CliCommand eXport(std::string_view); // 'export' is a reserved keyword
-CliCommand help  (std::string_view);
-inline CliCommand exit(std::string_view) { return CliCommandExit{}; }
+CliCommand columns      (std::string_view);
+CliCommand set          (std::string_view);
+CliCommand select       (std::string_view);
+CliCommand select_add   (std::string_view);
+CliCommand select_rem   (std::string_view);
+CliCommand count        (std::string_view);
+CliCommand peek         (std::string_view);
+CliCommand head         (std::string_view);
+CliCommand tail         (std::string_view);
+CliCommand filter       (std::string_view);
+CliCommand filter_exp   (std::string_view);
+CliCommand filter_exc   (std::string_view);
+CliCommand sort         (std::string_view);
+CliCommand distinct     (std::string_view);
+CliCommand reset        (std::string_view);
+CliCommand eXport       (std::string_view); // 'export' is a reserved keyword
+CliCommand help         (std::string_view);
+CliCommand exit         (std::string_view);
 
 } // namespace parsers
 } // namespace hawk::cli

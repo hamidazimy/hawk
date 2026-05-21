@@ -70,8 +70,8 @@ std::optional<char> parse_delimiter(const std::string& str) {
     return std::nullopt;
 }
 
-std::uint8_t num_digits(std::uint64_t n) {
-    return (std::uint8_t)std::log10(n) + 1;
+std::size_t num_digits(std::uint64_t n) {
+    return (std::size_t)std::log10(n) + 1;
 }
 
 } // namespace utils

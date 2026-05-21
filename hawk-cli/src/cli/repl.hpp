@@ -1,17 +1,21 @@
 #ifndef HAWK_CLI_REPL_HPP
 #define HAWK_CLI_REPL_HPP
 
-#include <cli/cli_commands.hpp>
+#include <cli/commands.hpp>
+#include <cli/renderers.hpp>
 
 #include <hawk/hawk.hpp>
 
 #include <replxx.hxx>
 
 #include <cstddef>
+#include <iostream>
 #include <memory>
 #include <string>
 
 namespace hawk::cli {
+
+struct ExitRequested {};
 
 class REPL {
 public:
@@ -27,11 +31,35 @@ public:
 private:
     std::string prompt() const;
 
-    bool execute(const CliCommand& cmd);
+    renderers::RenderContext make_ctx() const {
+        return {session_->schema(), terminal_width_, std::cout};
+    }
 
-    bool execute_impl(const CliCommandExport&);
-    bool execute_impl(const CliCommandHelp&);
-    bool execute_impl(const CliCommandExit&);
+    void dispatch(const hawk::LibCommand& cmd, const renderers::RenderOptions& options = {});
+
+    void execute(const CliCommand& cmd);
+
+    // Command implementations
+
+    void execute_impl(const CliColumns&);
+    void execute_impl(const CliSetName&);
+    void execute_impl(const CliSetType&);
+    void execute_impl(const CliSelect&);
+    void execute_impl(const CliSelectAdd&);
+    void execute_impl(const CliDeselect&);
+    void execute_impl(const CliCount&);
+    void execute_impl(const CliPeek&);
+    void execute_impl(const CliHead&);
+    void execute_impl(const CliTail&);
+    void execute_impl(const CliFilter&);
+    void execute_impl(const CliFilterExp&);
+    void execute_impl(const CliFilterExc&);
+    void execute_impl(const CliSort&);
+    void execute_impl(const CliDistinct&);
+    void execute_impl(const CliReset&);
+    void execute_impl(const CliExport&);
+    void execute_impl(const CliHelp&);
+    void execute_impl(const CliExit&) { throw ExitRequested{}; };
 
 private:
     std::unique_ptr<Session> session_;
