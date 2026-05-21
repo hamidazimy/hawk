@@ -326,6 +326,15 @@ RecordCount Session::apply_sort(const SortKey& key) {
 
 // --- Command implementations ---
 
+CommandResult Session::execute_impl(const ConfigCommand&) {
+    return CommandResult::ok(ConfigResult{
+        config_.use_crlf,
+        config_.delimiter,
+        config_.has_header,
+        config_.case_sensitive
+    });
+}
+
 CommandResult Session::execute_impl(const RecordsCommand& cmd) {
     const RecordIndex total = cmd.raw ? file_row_count() : view_row_count();
     const RecordIndex start = cmd.start.value_or(0);

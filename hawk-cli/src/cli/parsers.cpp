@@ -184,6 +184,18 @@ hawk::FilterArgs parse_filter_args(std::string_view args_line) {
 
 } // namespace
 
+CliCommand config       (std::string_view args_line) {
+    if (!args_line.empty()) {
+        throw std::invalid_argument{
+            std::format(
+                "config command does not take any arguments. Got: {}",
+                args_line
+            )
+        };
+    }
+    return CliConfig{};
+}
+
 CliCommand columns      (std::string_view args_line) {
     if (!args_line.empty()) {
         throw std::invalid_argument{

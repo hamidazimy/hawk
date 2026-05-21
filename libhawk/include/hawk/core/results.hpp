@@ -16,6 +16,13 @@ namespace hawk { class Projection; }
 
 namespace hawk {
 
+struct ConfigResult {
+    bool use_crlf;
+    char delimiter;
+    bool has_header;
+    bool case_sensitive;
+};
+
 struct RecordsResult {
     std::vector<Row>  rows;
     const Projection* projection; // Non-owning pointer to the projection used to project the rows.
@@ -54,6 +61,7 @@ struct ColumnsResult {
 };
 
 using ResultPayload = std::variant<
+    ConfigResult,
     RecordsResult,
     CountResult,
     FilterResult,

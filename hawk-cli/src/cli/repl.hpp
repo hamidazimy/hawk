@@ -41,6 +41,7 @@ private:
 
     // Command implementations
 
+    void execute_impl(const CliConfig&);
     void execute_impl(const CliColumns&);
     void execute_impl(const CliSetName&);
     void execute_impl(const CliSetType&);

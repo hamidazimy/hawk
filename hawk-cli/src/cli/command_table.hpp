@@ -11,6 +11,15 @@ namespace hawk::cli {
 
 inline const CommandInfo command_table[] = {
     {
+        "config",
+        "",
+        "Show configuration for the current dataset",
+        "\n""Display the currently inferred/set configuration, including delimiter, header presence,"
+        "\n""line ending style, and case sensitivity. This can be useful for debugging.",
+        {},
+        parsers::config
+    },
+    {
         "columns",
         "",
         "List all columns with their (inferred) types",

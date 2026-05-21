@@ -8,6 +8,7 @@
 namespace hawk::cli {
 namespace parsers {
 
+CliCommand config       (std::string_view);
 CliCommand columns      (std::string_view);
 CliCommand set          (std::string_view);
 CliCommand select       (std::string_view);

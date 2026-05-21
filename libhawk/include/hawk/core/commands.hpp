@@ -14,6 +14,9 @@ namespace hawk { enum class FilterOp; }
 
 namespace hawk {
 
+struct ConfigCommand {
+};
+
 struct RecordsCommand {
     std::optional<RecordIndex> start; // nullopt = 0
     std::optional<RecordIndex> end;   // nullopt = view_size (exclusive)
@@ -122,6 +125,7 @@ struct ResetCommand {
 };
 
 using LibCommand = std::variant<
+    ConfigCommand,
     RecordsCommand,
     ColumnsCommand,
     SetColumnNameCommand,

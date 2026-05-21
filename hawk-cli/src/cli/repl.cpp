@@ -147,6 +147,10 @@ void REPL::execute(const CliCommand& command) {
 
 // --- Implementations for each command ---
 
+void REPL::execute_impl(const CliConfig&) {
+    dispatch(ConfigCommand{});
+}
+
 void REPL::execute_impl(const CliColumns&) {
     dispatch(ColumnsCommand{});
 }

@@ -14,6 +14,7 @@ namespace hawk::cli {
 enum class DisplayMode  { Horizontal, Vertical, VerticalUntruncated };
 enum class ExportMode   { Full, Projected };
 
+struct CliConfig        {};
 struct CliColumns       {};
 struct CliSetName       { std::string old_name; std::string new_name; };
 struct CliSetType       { std::string column; hawk::ColumnType type; std::optional<std::string> dt_pattern; };
@@ -35,6 +36,7 @@ struct CliHelp          { std::optional<std::string> command_name; };
 struct CliExit          {};
 
 using CliCommand = std::variant<
+    CliConfig,
     CliColumns,
     CliSetName,
     CliSetType,

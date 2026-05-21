@@ -62,6 +62,7 @@ private:
     Row make_row_from_file(RecordIndex file_index) const;
     Row make_row_from_view(RecordIndex view_index) const;
 
+    CommandResult execute_impl(const ConfigCommand&);
     CommandResult execute_impl(const RecordsCommand&);
     CommandResult execute_impl(const ColumnsCommand&);
     CommandResult execute_impl(const CountCommand&);

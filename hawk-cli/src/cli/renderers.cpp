@@ -211,6 +211,24 @@ void render_records_vertical(
 
 void render_impl(
     const RenderContext& ctx,
+    const hawk::ConfigResult& res,
+    const RenderOptions&
+) {
+    render_info(std::format(
+        "Configuration:"
+        "\n  Delimiter:      '{}'"
+        "\n  Header row:     {}"
+        "\n  Line endings:   {}"
+        "\n  Case sensitive: {}",
+        res.delimiter,
+        res.has_header ? "Yes" : "No",
+        res.use_crlf ? "CRLF (Windows)" : "LF (Unix)",
+        res.case_sensitive ? "Yes" : "No"
+    ), ctx.sout);
+}
+
+void render_impl(
+    const RenderContext& ctx,
     const hawk::RecordsResult& res,
     const RenderOptions& options
 ) {
