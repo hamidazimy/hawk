@@ -454,25 +454,6 @@ CommandResult Session::execute_impl(const CountCommand&) {
     });
 }
 
-CommandResult Session::execute_impl(const TailCommand& cmd) {
-    RecordCount max_visible_records = view_row_count();
-    RecordCount count = std::min(cmd.max_records, max_visible_records);
-
-    std::vector<Row> rows;
-    rows.reserve(count);
-
-    const RecordIndex start = max_visible_records - count;
-
-    for (RecordIndex i = start; i < max_visible_records; ++i) {
-        rows.emplace_back(make_row_from_view(i));
-    }
-
-    return CommandResult::ok(RecordsResult{
-        std::move(rows),
-        &current_projection_
-    });
-} // To be removed...
-
 CommandResult Session::execute_impl(const FilterCommand& cmd) {
     auto filter_result = prepare_filter(schema_, cmd, config_.case_sensitive);
     if (filter_result.error) return CommandResult::err(*filter_result.error);

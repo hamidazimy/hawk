@@ -72,11 +72,6 @@ struct DeselectCommand {
 struct CountCommand {
 };
 
-struct TailCommand {
-    RecordCount max_records;
-    explicit TailCommand(RecordCount count) : max_records(count) {}
-};  // To be removed in favor of RecordsCommand with start/end args
-
 struct FilterArgs {
     std::string column;                // empty when row_search is true
     bool        row_search = false;    // true when target is $row
@@ -135,7 +130,6 @@ using LibCommand = std::variant<
     SelectAddCommand,
     DeselectCommand,
     CountCommand,
-    TailCommand, // To be removed...
     FilterCommand,
     FilterExpandCommand,
     FilterExcludeCommand,

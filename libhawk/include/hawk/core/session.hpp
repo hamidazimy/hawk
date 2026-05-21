@@ -70,7 +70,6 @@ private:
     CommandResult execute_impl(const SelectCommand&);
     CommandResult execute_impl(const SelectAddCommand&);
     CommandResult execute_impl(const DeselectCommand&);
-    CommandResult execute_impl(const TailCommand&); // To be removed...
     CommandResult execute_impl(const FilterCommand&);
     CommandResult execute_impl(const FilterExpandCommand&);
     CommandResult execute_impl(const FilterExcludeCommand&);
