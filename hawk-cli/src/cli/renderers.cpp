@@ -23,7 +23,41 @@ namespace renderers {
 
 namespace {
 
+// ----- Rendering symbols -----
+
+constexpr std::string_view SYM_ELLIPSIS = "\u2026"; // …
+constexpr std::string_view SYM_NEXTLINE = "\u21b5"; // ↵
+constexpr std::string_view SYM_TAB      = "\u21e5"; // ⇥
+constexpr std::string_view SYM_EMPTY    = "(empty)";
+
 // ----- Helper functions -----
+
+std::string_view strip_csv_quotes(std::string_view field, std::string& buf) {
+    // Must start and end with the same quote character
+    if (field.size() < 2) return field;
+    char q = field.front();
+    if ((q != '"' && q != '\'') || field.back() != q) return field;
+
+    std::string_view inner = field.substr(1, field.size() - 2);
+
+    // Fast path: no doubled quotes inside
+    std::string doubled;
+    doubled += q; doubled += q; // e.g. ""
+    if (inner.find(doubled) == std::string_view::npos) return inner;
+
+    // Slow path: unescape doubled quotes
+    buf.clear();
+    buf.reserve(inner.size());
+    for (std::size_t i = 0; i < inner.size(); ++i) {
+        buf += inner[i];
+        if (inner[i] == q && i + 1 < inner.size() && inner[i + 1] == q) {
+            ++i; // skip the second quote
+        }
+    }
+    return buf;
+}
+
+// ----- Helper renderers -----
 
 void render_hline(
     const RenderContext& ctx,
@@ -57,6 +91,59 @@ void render_colns(
     ctx.sout << "\n" << std::setfill(' ');
 }
 
+void render_field(
+    const RenderContext& ctx,
+    std::string_view field,
+    std::size_t width,
+    bool has_trailer = false
+) {
+    std::string quote_buf;
+    field = strip_csv_quotes(field, quote_buf);
+
+    // Fast path: no control characters
+    if (field.find_first_of("\r\n\t") == std::string_view::npos) {
+        if (field.size() <= width) {
+            ctx.sout << field;
+            ctx.sout << std::string(width - field.size(), ' ');
+        } else {
+            ctx.sout << field.substr(0, width - (has_trailer ? 0 : 1));
+            ctx.sout << SYM_ELLIPSIS;
+        }
+        return;
+    }
+
+    // Slow path
+    std::size_t col = 0;
+    bool truncated = false;
+
+    for (std::size_t i = 0; i < field.size(); ++i) {
+        char c = field[i];
+        if (c == '\r') continue;
+
+        if (col == width - 1 && i + 1 < field.size()) {
+            if (has_trailer) ctx.sout.put(c);
+            truncated = true;
+            ++col;
+            break;
+        } else if (c == '\n') {
+            ctx.sout << SYM_NEXTLINE;
+            ++col;
+        } else if (c == '\t') {
+            ctx.sout << SYM_TAB;
+            ++col;
+        } else {
+            ctx.sout.put(c);
+            ++col;
+        }
+    }
+
+    if (col < width)
+        ctx.sout << std::string(width - col, ' ');
+
+    if (truncated)
+        ctx.sout << SYM_ELLIPSIS;
+}
+
 void render_header(
     const RenderContext& ctx,
     const std::vector<std::size_t>& column_widths,
@@ -68,8 +155,9 @@ void render_header(
         ctx.sout << std::setw(index_width) << std::right << "#" << " │ ";
     }
     for (std::size_t i = 0; i < column_widths.size(); ++i) {
-        ColumnIndex col = projection->at(i);
-        ctx.sout << std::setw(column_widths[i]) << std::left << ctx.schema.column(col).name << " ";
+        if (i != 0) ctx.sout << " "; // column separator
+        auto col_name = ctx.schema.column(projection->at(i)).name;
+        render_field(ctx, col_name, column_widths[i]);
     }
     ctx.sout << "\n";
     render_hline(ctx, index_width, "┤", column_widths, '-');
@@ -87,20 +175,9 @@ void render_row_horizontal(
     }
     ColumnCount column_count = projection->size();
     for (std::size_t i = 0; i < column_count; ++i) {
+        if (i != 0) ctx.sout << " "; // column separator
         auto field = row.get_projected(projection, i);
-        const auto width = column_widths[i];
-
-        std::string trimmed;
-
-        if (field.size() > width) {
-            trimmed.reserve(width);
-            trimmed.append(field.data(), width - 1);
-            trimmed += "…";
-        } else {
-            trimmed = field;
-        }
-
-        ctx.sout << std::setw(width) << std::left << trimmed << " ";
+        render_field(ctx, field, column_widths[i]);
     }
     ctx.sout << "\n";
 }
@@ -136,6 +213,59 @@ void render_records_horizontal(
     }
 }
 
+void render_field_vertical(
+    const RenderContext& ctx,
+    std::string_view field,
+    std::size_t field_width,
+    std::size_t sidebar_width,
+    bool untruncated
+) {
+    if (field.empty()) {
+        ctx.sout << sgr::colorize(SYM_EMPTY, "#555");
+        return;
+    }
+
+    std::string quote_buf;
+    field = strip_csv_quotes(field, quote_buf);
+
+    if (!untruncated) {
+        render_field(ctx, field, field_width, true);
+        return;
+    }
+
+    std::size_t pos = 0;
+    std::size_t col = 0;
+    while (pos < field.size()) {
+        char c = field[pos];
+
+        if (c == '\r') {
+            ++pos;
+            continue;
+        }
+
+        if (c == '\n') {
+            ++pos;
+            // Pad remaining columns
+            if (col < field_width) {
+                ctx.sout << std::string(field_width - col, ' ');
+            }
+            ctx.sout << SYM_NEXTLINE << "\n " << std::string(sidebar_width, ' ') << " ";
+            col = 0;
+            continue;
+        }
+
+        if (col >= field_width) {
+            ctx.sout << SYM_ELLIPSIS << "\n " << std::string(sidebar_width, ' ') << " ";
+            col = 0;
+            continue;
+        }
+
+        ctx.sout.put(c);
+        ++col;
+        ++pos;
+    }
+}
+
 void render_row_vertical(
     const RenderContext& ctx,
     const hawk::Row& row,
@@ -156,28 +286,8 @@ void render_row_vertical(
     for (ColumnIndex i = 0; i < column_count; ++i) {
         ColumnIndex col = projection->at(i);
         auto field = row.get_projected(projection, i);
-        if (field.empty()) {
-            ctx.sout << std::format(" {:<{}} {}",
-                ctx.schema.column(col).name, sidebar_width, sgr::colorize("(empty)", "#555")
-            );
-        }
-        else {
-            ctx.sout << std::format(" {:<{}} {}",
-                ctx.schema.column(col).name, sidebar_width, field.substr(0, field_width)
-            );
-        }
-        if (untruncated) {
-            std::size_t next_line_pos = field_width;
-            while (field.size() > next_line_pos) {
-                ctx.sout << "\n " << std::setw(sidebar_width) << ""
-                    << std::format(" {}", field.substr(next_line_pos, field_width)
-                );
-                next_line_pos += field_width;
-            }
-        }
-        else {
-            ctx.sout << (field.size() > field_width ? "…" : "");
-        }
+        ctx.sout << std::format(" {:<{}} ", ctx.schema.column(col).name, sidebar_width);
+        render_field_vertical(ctx, field, field_width, sidebar_width, untruncated);
         ctx.sout << "\n";
     }
     ctx.sout << "\n";
