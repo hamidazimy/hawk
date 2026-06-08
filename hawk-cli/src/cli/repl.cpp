@@ -13,13 +13,15 @@
 #include <replxx.hxx>
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <exception>
 #include <format>
 #include <fstream>
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 #include <optional>
+#include <ranges>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -72,6 +74,12 @@ void REPL::run() {
         input = input.substr(first, last - first + 1);
         if (input.empty()) continue;
 
+        // Comments: record, do not execute
+        if (input[0] == '#') {
+            input_history_.push_back(input);
+            continue;
+        }
+
         editor_.history_add(input);
 
         // Split command and arguments
@@ -87,6 +95,10 @@ void REPL::run() {
             space_pos == std::string_view::npos
                 ? std::string_view{}
                 : line.substr(space_pos + 1);
+
+        if (!is_excluded_from_history(cmd)) {
+            input_history_.push_back(input);
+        }
 
         // Intercept --help before dispatch
         if (utils::trim(args) == "--help") {
@@ -124,6 +136,20 @@ void REPL::run() {
     }
 
     std::cout << constants::GOODBYE_MSG << "\n";
+}
+
+bool REPL::is_excluded_from_history(std::string_view cmd) {
+    static constexpr std::array<std::string_view, 3> excluded_names = {
+        "history", "help", "exit"
+    };
+
+    for (const auto& info : command_table) {
+        if (matches(info, cmd) &&
+            std::ranges::find(excluded_names, info.name) != excluded_names.end()) {
+            return true;
+        }
+    }
+    return false;
 }
 
 std::string REPL::prompt() const {
@@ -322,6 +348,30 @@ void REPL::execute_impl(const CliExport& cmd) {
     }
 
     renderers::render_execution_time(result.execution_time_ms, std::cout);
+}
+
+void REPL::execute_impl(const CliHistory& cmd) {
+    if (!cmd.save_path) {
+        for (const auto& line : input_history_) {
+            std::cout << line << '\n';
+        }
+        return;
+    }
+
+    std::ofstream out(*cmd.save_path);
+    if (!out) {
+        renderers::render_error(std::format("Could not open file: {}", *cmd.save_path));
+        return;
+    }
+
+    for (const auto& line : input_history_) {
+        out << line << '\n';
+    }
+
+    renderers::render_info(
+        std::format("Saved {} commands to {}", input_history_.size(), *cmd.save_path)
+        , std::cout
+    );
 }
 
 void REPL::execute_impl(const CliHelp& cmd) {

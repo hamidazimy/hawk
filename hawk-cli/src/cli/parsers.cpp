@@ -516,6 +516,17 @@ CliCommand eXport       (std::string_view args_line) {
     return CliExport{std::move(path), mode};
 }
 
+CliCommand history      (std::string_view args_line) {
+    if (args_line.empty()) return CliHistory{};
+
+    auto args = cli::utils::tokenize(args_line);
+    if (args.size() == 2 && (args[0] == "--save" || args[0] == "-s")) {
+        return CliHistory{.save_path = std::string(args[1])};
+    }
+
+    throw std::invalid_argument("Usage: history [--save|-s <path>]");
+}
+
 CliCommand help         (std::string_view args_line) {
     if (args_line.empty()) {
         return CliHelp{std::nullopt};

@@ -32,6 +32,7 @@ struct CliSort          { std::string column; bool is_desc = false; };
 struct CliDistinct      { std::string column; bool sort_by_value = false; bool sort_desc = false; };
 struct CliReset         { bool view = false; bool proj = false; bool sort = false; };
 struct CliExport        { std::string path; ExportMode mode = ExportMode::Full; };
+struct CliHistory       { std::optional<std::string> save_path; };
 struct CliHelp          { std::optional<std::string> command_name; };
 struct CliExit          {};
 
@@ -54,6 +55,7 @@ using CliCommand = std::variant<
     CliDistinct,
     CliReset,
     CliExport,
+    CliHistory,
     CliHelp,
     CliExit
 >;

@@ -12,6 +12,8 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <string_view>
+#include <vector>
 
 namespace hawk::cli {
 
@@ -29,6 +31,8 @@ public:
     const Session& session() const { return *session_; }
 
 private:
+    static bool is_excluded_from_history(std::string_view);
+
     std::string prompt() const;
 
     renderers::RenderContext make_ctx() const {
@@ -59,11 +63,13 @@ private:
     void execute_impl(const CliDistinct&);
     void execute_impl(const CliReset&);
     void execute_impl(const CliExport&);
+    void execute_impl(const CliHistory&);
     void execute_impl(const CliHelp&);
     void execute_impl(const CliExit&) { throw ExitRequested{}; };
 
 private:
     std::unique_ptr<Session> session_;
+    std::vector<std::string> input_history_;
     replxx::Replxx editor_;
     std::size_t terminal_width_ = 80;
 };

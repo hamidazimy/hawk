@@ -25,6 +25,7 @@ CliCommand sort         (std::string_view);
 CliCommand distinct     (std::string_view);
 CliCommand reset        (std::string_view);
 CliCommand eXport       (std::string_view); // 'export' is a reserved keyword
+CliCommand history      (std::string_view);
 CliCommand help         (std::string_view);
 CliCommand exit         (std::string_view);
 

@@ -293,6 +293,21 @@ inline const CommandInfo command_table[] = {
         parsers::eXport
     },
     {
+        "history",
+        "[--save|-s <path>]",
+        "Show or save command history.",
+        "\n""history [--save|-s <path>]"
+        "\n""  Without --save: prints recorded commands to stdout."
+        "\n""  With --save: writes commands to <path>, one per line."
+        "\n"
+        "\n""  Lines starting with '#' are recorded as comments but not executed,"
+        "\n""  so saved scripts can be annotated."
+        "\n"
+        "\n""  Excluded from history: history, help, exit.",
+        {},
+        parsers::history
+    },
+    {
         "help",
         "[command]",
         "Show help information",
