@@ -103,6 +103,11 @@ struct FilterExcludeCommand : FilterArgs {
         : FilterArgs(std::move(args)) {}
 };
 
+struct SliceCommand {
+    std::optional<RangeBound> start;
+    std::optional<RangeBound> end;
+};
+
 struct SortCommand {
     std::string column;
     bool        is_desc = false;
@@ -137,6 +142,7 @@ using LibCommand = std::variant<
     FilterCommand,
     FilterExpandCommand,
     FilterExcludeCommand,
+    SliceCommand,
     SortCommand,
     DistinctCommand,
     ResetCommand

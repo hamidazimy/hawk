@@ -28,6 +28,7 @@ struct CliTail          { RecordCount n = 10; DisplayMode mode = DisplayMode::Ho
 struct CliFilter        { hawk::FilterArgs args; };
 struct CliFilterExp     { hawk::FilterArgs args; };
 struct CliFilterExc     { hawk::FilterArgs args; };
+struct CliSlice         { std::string arg; };
 struct CliSort          { std::string column; bool is_desc = false; };
 struct CliDistinct      { std::string column; bool sort_by_value = false; bool sort_desc = false; };
 struct CliReset         { bool view = false; bool proj = false; bool sort = false; };
@@ -51,6 +52,7 @@ using CliCommand = std::variant<
     CliFilter,
     CliFilterExp,
     CliFilterExc,
+    CliSlice,
     CliSort,
     CliDistinct,
     CliReset,

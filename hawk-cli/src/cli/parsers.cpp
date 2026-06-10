@@ -382,6 +382,19 @@ CliCommand filter_exc   (std::string_view args_line) {
     return CliFilterExc{parse_filter_args(args_line)};
 }
 
+CliCommand slice        (std::string_view args_line) {
+    auto args = utils::tokenize(args_line);
+    if (args.size() != 1) {
+        throw std::invalid_argument{
+            std::format(
+                "slice command takes exactly one argument. Got: {}",
+                args_line
+            )
+        };
+    }
+    return CliSlice{std::string(args[0])};
+}
+
 CliCommand sort         (std::string_view args_line) {
     auto args = utils::tokenize(args_line);
     if (args.empty()) {

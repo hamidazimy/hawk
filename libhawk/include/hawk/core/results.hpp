@@ -38,6 +38,10 @@ struct FilterResult {
     RecordCount skipped;   // 0 if clean
 };
 
+struct SliceResult {
+    RecordCount size;   // resulting view size after the slice
+};
+
 struct SortResult {
     RecordCount row_count;
     RecordCount unparseable_count;
@@ -65,6 +69,7 @@ using ResultPayload = std::variant<
     RecordsResult,
     CountResult,
     FilterResult,
+    SliceResult,
     SortResult,
     DistinctResult,
     ColumnsResult

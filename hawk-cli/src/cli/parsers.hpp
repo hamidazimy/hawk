@@ -21,6 +21,7 @@ CliCommand tail         (std::string_view);
 CliCommand filter       (std::string_view);
 CliCommand filter_exp   (std::string_view);
 CliCommand filter_exc   (std::string_view);
+CliCommand slice        (std::string_view);
 CliCommand sort         (std::string_view);
 CliCommand distinct     (std::string_view);
 CliCommand reset        (std::string_view);

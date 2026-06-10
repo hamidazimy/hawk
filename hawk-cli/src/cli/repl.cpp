@@ -292,6 +292,64 @@ void REPL::execute_impl(const CliFilterExc& cmd) {
     dispatch(FilterExcludeCommand{cmd.args});
 }
 
+void REPL::execute_impl(const CliSlice& cmd) {
+    std::string_view arg = cmd.arg;
+    auto colon = arg.find(':');
+
+    auto parse_required = [](std::string_view s) -> std::int64_t {
+        std::int64_t v;
+        if (!hawk::utils::parse_int(s, v) || v == 0) {
+            throw std::invalid_argument(
+                std::format("Invalid bound: '{}' (must be non-zero integer)", s)
+            );
+        }
+        return v;
+    };
+
+    auto parse_optional = [&](std::string_view s) -> std::optional<std::int64_t> {
+        if (s.empty()) return std::nullopt;
+        return parse_required(s);
+    };
+
+    // CLI 1-based inclusive → lib 0-based exclusive (Python semantics).
+    auto translate_start = [](std::optional<std::int64_t> cli_v)
+                            -> std::optional<hawk::RangeBound> {
+        if (!cli_v) return std::nullopt;
+        return *cli_v > 0 ? *cli_v - 1 : *cli_v;
+    };
+
+    auto translate_end = [](std::optional<std::int64_t> cli_v)
+                          -> std::optional<hawk::RangeBound> {
+        if (!cli_v) return std::nullopt;
+        if (*cli_v > 0) return *cli_v;
+        if (*cli_v == -1) return std::nullopt;   // inclusive last → lib open end
+        return *cli_v + 1;
+    };
+
+    std::optional<std::int64_t> cli_start;
+    std::optional<std::int64_t> cli_end;
+
+    try {
+        if (colon == std::string_view::npos) {
+            // Bare number: positive N → :N (first N), negative N → N: (last N)
+            auto v = parse_required(arg);
+            if (v > 0) cli_end = v;
+            else       cli_start = v;
+        } else {
+            cli_start = parse_optional(arg.substr(0, colon));
+            cli_end   = parse_optional(arg.substr(colon + 1));
+        }
+    } catch (const std::exception& e) {
+        renderers::render_error(e.what(), std::cout);
+        return;
+    }
+
+    dispatch(hawk::SliceCommand{
+        .start = translate_start(cli_start),
+        .end   = translate_end(cli_end),
+    });
+}
+
 void REPL::execute_impl(const CliSort& cmd) {
     dispatch(SortCommand{cmd.column, cmd.is_desc});
 }

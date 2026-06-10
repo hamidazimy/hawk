@@ -59,6 +59,7 @@ private:
     void execute_impl(const CliFilter&);
     void execute_impl(const CliFilterExp&);
     void execute_impl(const CliFilterExc&);
+    void execute_impl(const CliSlice&);
     void execute_impl(const CliSort&);
     void execute_impl(const CliDistinct&);
     void execute_impl(const CliReset&);

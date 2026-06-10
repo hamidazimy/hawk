@@ -216,6 +216,26 @@ inline const CommandInfo command_table[] = {
         parsers::filter_exc
     },
     {
+        "slice",
+        "<range>",
+        "Narrow current view to a positional subset",
+        "Narrow the current view to a positional subset."
+        "\n""  Range syntax (1-based, inclusive):"
+        "\n""    slice N         First N rows         (e.g. slice 100)"
+        "\n""    slice -N        Last N rows          (e.g. slice -100)"
+        "\n""    slice i:j       Rows i through j     (e.g. slice 5:50)"
+        "\n""    slice :j        Rows 1 through j     (e.g. slice :100)"
+        "\n""    slice i:        Rows i through end   (e.g. slice 5:)"
+        "\n"
+        "\n""  Negative bounds count from the end (-1 = last row)."
+        "\n""  Out-of-range bounds are clamped with a warning."
+        "\n"
+        "\n""  To slice the file directly rather than the current view,"
+        "\n""  use `reset --view` first.",
+        {},
+        parsers::slice
+    },
+    {
         "sort",
         "<column> [--desc|-r] [--default|-d]",
         "Sort the current view by a column",

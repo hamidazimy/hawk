@@ -395,6 +395,14 @@ void render_impl(
 
 void render_impl(
     const RenderContext& ctx,
+    const hawk::SliceResult& res,
+    const RenderOptions&
+) {
+    render_info("Matched: " + std::to_string(res.size), ctx.sout);
+}
+
+void render_impl(
+    const RenderContext& ctx,
     const hawk::SortResult& res,
     const RenderOptions&
 ) {

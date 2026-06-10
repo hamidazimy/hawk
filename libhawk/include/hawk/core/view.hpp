@@ -76,6 +76,16 @@ public:
         return View(std::move(result), total_records_);
     }
 
+    View slice(RecordCount start, RecordCount end) const {
+        // Caller guarantees start <= end <= size()
+        std::vector<RecordIndex> result;
+        result.reserve(end - start);
+        for (RecordCount i = start; i < end; ++i) {
+            result.push_back((*this)[i]);
+        }
+        return View(std::move(result), total_records_);
+    }
+
     void sort_to_file_order();
 
 private:
