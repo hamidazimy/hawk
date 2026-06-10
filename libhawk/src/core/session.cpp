@@ -250,9 +250,8 @@ struct ResolvedRange {
 // resolution) is reported via the inverted flag — the caller decides whether
 // to treat it as an error or as an empty range.
 ResolvedRange resolve_range(
-    std::optional<RangeBound> start,
-    std::optional<RangeBound> end,
-    RecordCount               total
+    const Range& range,
+    RecordCount  total
 ) {
     auto resolve = [total](RangeBound v) -> std::pair<std::int64_t, bool> {
         const auto signed_total = static_cast<std::int64_t>(total);
@@ -271,14 +270,14 @@ ResolvedRange resolve_range(
 
     std::int64_t start_signed = 0;
     bool         start_clamped = false;
-    if (start.has_value()) {
-        std::tie(start_signed, start_clamped) = resolve(*start);
+    if (range.start.has_value()) {
+        std::tie(start_signed, start_clamped) = resolve(*range.start);
     }
 
     std::int64_t end_signed = static_cast<std::int64_t>(total);
     bool         end_clamped = false;
-    if (end.has_value()) {
-        std::tie(end_signed, end_clamped) = resolve(*end);
+    if (range.end.has_value()) {
+        std::tie(end_signed, end_clamped) = resolve(*range.end);
     }
 
     return {
@@ -394,36 +393,43 @@ CommandResult Session::execute_impl(const ConfigCommand&) {
 }
 
 CommandResult Session::execute_impl(const RecordsCommand& cmd) {
-    const RecordIndex total = cmd.raw ? file_row_count() : view_row_count();
-    const RecordIndex start = cmd.start.value_or(0);
-    const RecordIndex end   = cmd.end.value_or(total);
+    const auto total = cmd.raw ? file_row_count() : view_row_count();
+    const auto range = resolve_range(cmd.range, total);
 
-    if (start >= end) {
-        return CommandResult::err(std::format(
-            "Start index {} must be less than end index {}", start, end
-        ));
+    if (range.inverted) {
+        return CommandResult::err("Range is inverted (start > end)");
     }
-    if (end > total) {
+
+    if (range.clamped && range.start == range.end) {
         return CommandResult::err(std::format(
-            "End index {} is out of range ({} has {} records)",
-            end,
+            "Range is outside the {} (size {})",
             cmd.raw ? "file" : "view",
             total
         ));
     }
 
     std::vector<Row> rows;
-    rows.reserve(end - start);
-    for (RecordIndex i = start; i < end; ++i) {
+    rows.reserve(range.end - range.start);
+    for (auto i = range.start; i < range.end; ++i) {
         rows.emplace_back(cmd.raw
             ? make_row_from_file(i)
             : make_row_from_view(i));
     }
 
-    return CommandResult::ok(RecordsResult{
+    auto result = CommandResult::ok(RecordsResult{
         std::move(rows),
         &current_projection_
     });
+
+    if (range.clamped) {
+        result.warnings.push_back(std::format(
+            "Range clamped to {} size ({})",
+            cmd.raw ? "file" : "view",
+            total
+        ));
+    }
+
+    return result;
 }
 
 CommandResult Session::execute_impl(const ColumnsCommand&) {
@@ -617,7 +623,7 @@ CommandResult Session::execute_impl(const FilterExcludeCommand& cmd) {
 }
 
 CommandResult Session::execute_impl(const SliceCommand& cmd) {
-    const auto resolved = resolve_range(cmd.start, cmd.end, current_view_.size());
+    const auto resolved = resolve_range(cmd.range, current_view_.size());
 
     if (resolved.inverted) {
         return CommandResult::err("Slice range is inverted (start > end)");

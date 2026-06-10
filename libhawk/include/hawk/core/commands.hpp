@@ -18,16 +18,15 @@ struct ConfigCommand {
 };
 
 struct RecordsCommand {
-    std::optional<RecordIndex> start; // nullopt = 0
-    std::optional<RecordIndex> end;   // nullopt = view_size (exclusive)
-    bool                       raw = false;
+    Range range;
+    bool  raw = false;
 
     static RecordsCommand all_view_records() {
-        return {std::nullopt, std::nullopt, false};
+        return {.range = {}, .raw = false};
     }
 
     static RecordsCommand all_file_records() {
-        return {std::nullopt, std::nullopt, true};
+        return {.range = {}, .raw = true};
     }
 };
 
@@ -104,8 +103,7 @@ struct FilterExcludeCommand : FilterArgs {
 };
 
 struct SliceCommand {
-    std::optional<RangeBound> start;
-    std::optional<RangeBound> end;
+    Range range;
 };
 
 struct SortCommand {

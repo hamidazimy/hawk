@@ -12,7 +12,6 @@
 
 #include <replxx.hxx>
 
-#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <exception>
@@ -39,6 +38,41 @@ bool matches(const CommandInfo& info, std::string_view cmd) {
         if (alias == cmd) return true;
     }
     return false;
+}
+
+// Translates a CLI range (1-based inclusive, analyst convention) into a
+// libhawk range (0-based half-open, Python convention).
+//
+// Conversion rules:
+//   start:  positive N     -> N - 1 (1-based -> 0-based)
+//           negative N     -> N (unchanged; meaning "Nth from end")
+//           nullopt        -> nullopt (open-ended)
+//
+//   end:    positive N     -> N (1-based inclusive == 0-based exclusive)
+//           negative -1    -> nullopt (inclusive last == lib open-ended end)
+//           negative N<-1  -> N + 1 (one less in absolute value)
+//           nullopt        -> nullopt (open-ended)
+//
+// See hawk::Range docstring for the lib-side convention.
+hawk::Range translate_to_lib_range(const CliRange& cli) {
+    auto translate_start = [](std::optional<std::int64_t> v)
+                            -> std::optional<hawk::RangeBound> {
+        if (!v) return std::nullopt;
+        return *v > 0 ? *v - 1 : *v;
+    };
+
+    auto translate_end = [](std::optional<std::int64_t> v)
+                          -> std::optional<hawk::RangeBound> {
+        if (!v) return std::nullopt;
+        if (*v > 0)   return *v;
+        if (*v == -1) return std::nullopt;
+        return *v + 1;
+    };
+
+    return hawk::Range{
+        .start = translate_start(cli.start),
+        .end   = translate_end(cli.end),
+    };
 }
 
 } // namespace
@@ -206,78 +240,33 @@ void REPL::execute_impl(const CliCount&) {
 }
 
 void REPL::execute_impl(const CliPeek& cmd) {
-    hawk::RecordsCommand records_cmd;
-    if (cmd.arg.empty()) {
-        records_cmd = hawk::RecordsCommand{0, 1, false};
-    } else {
-        std::string_view index_str = cmd.arg;
-        bool raw = false;
-
-        if (index_str.starts_with('#')) {
-            raw = true;
-            index_str = index_str.substr(1);
-        }
-
-        const RecordIndex total = raw ? session_->file_row_count() : session_->view_row_count();
-
-        // Check for range syntax N:M
-        auto colon = index_str.find(':');
-        if (colon != std::string_view::npos) {
-            std::int64_t start_val, end_val;
-            if (!hawk::utils::parse_int(index_str.substr(0, colon), start_val) || start_val < 1 ||
-                !hawk::utils::parse_int(index_str.substr(colon + 1), end_val)  || end_val < 1) {
-                renderers::render_error(
-                    std::format("Invalid range for peek: {}", cmd.arg), std::cout);
-                return;
-            }
-            if (start_val > end_val) {
-                renderers::render_error(
-                    std::format("Start must be <= end in peek range: {}", cmd.arg), std::cout);
-                return;
-            }
-            // CLI 1-based inclusive → lib 0-based exclusive
-            RecordIndex start = static_cast<RecordIndex>(start_val - 1);
-            RecordIndex end   = static_cast<RecordIndex>(end_val);
-            // Clamp end to total — CLI is user-friendly
-            end = std::min(end, total);
-            records_cmd = hawk::RecordsCommand{start, end, raw};
-        } else {
-            // Single index — support negative for last record
-            std::int64_t index;
-            if (!hawk::utils::parse_int(index_str, index) || index == 0) {
-                renderers::render_error(
-                    std::format("Invalid argument for peek: {}", cmd.arg), std::cout);
-                return;
-            }
-            RecordIndex idx;
-            if (index < 0) {
-                // Negative: from end
-                if (static_cast<RecordIndex>(-index) > total) {
-                    renderers::render_error(
-                        std::format("Index {} is out of range ({} records)",
-                            index, total), std::cout);
-                    return;
-                }
-                idx = total + static_cast<RecordIndex>(index);
-            } else {
-                idx = static_cast<RecordIndex>(index - 1);
-            }
-            records_cmd = hawk::RecordsCommand{idx, idx + 1, raw};
-        }
-    }
-    dispatch(records_cmd, {.display_mode = cmd.mode});
+    dispatch(
+        RecordsCommand{
+            .range = translate_to_lib_range(cmd.range),
+            .raw   = cmd.raw,
+        },
+        {.display_mode = cmd.mode}
+    );
 }
 
 void REPL::execute_impl(const CliHead& cmd) {
-    auto size = session_->view_row_count();
-    auto end = std::min(static_cast<RecordIndex>(cmd.n), size);
-    dispatch(hawk::RecordsCommand{0, end}, {.display_mode=cmd.mode});
+    dispatch(
+        RecordsCommand{
+            .range = {.start = std::nullopt, .end = static_cast<hawk::RangeBound>(cmd.n)},
+            .raw   = false,
+        },
+        {.display_mode = cmd.mode}
+    );
 }
 
 void REPL::execute_impl(const CliTail& cmd) {
-    auto size = session_->view_row_count();
-    auto start = size > cmd.n ? size - cmd.n : 0;
-    dispatch(hawk::RecordsCommand{start, size}, {.display_mode=cmd.mode});
+    dispatch(
+        RecordsCommand{
+            .range = {.start = -static_cast<hawk::RangeBound>(cmd.n), .end = std::nullopt},
+            .raw   = false,
+        },
+        {.display_mode = cmd.mode}
+    );
 }
 
 void REPL::execute_impl(const CliFilter& cmd) {
@@ -293,61 +282,7 @@ void REPL::execute_impl(const CliFilterExc& cmd) {
 }
 
 void REPL::execute_impl(const CliSlice& cmd) {
-    std::string_view arg = cmd.arg;
-    auto colon = arg.find(':');
-
-    auto parse_required = [](std::string_view s) -> std::int64_t {
-        std::int64_t v;
-        if (!hawk::utils::parse_int(s, v) || v == 0) {
-            throw std::invalid_argument(
-                std::format("Invalid bound: '{}' (must be non-zero integer)", s)
-            );
-        }
-        return v;
-    };
-
-    auto parse_optional = [&](std::string_view s) -> std::optional<std::int64_t> {
-        if (s.empty()) return std::nullopt;
-        return parse_required(s);
-    };
-
-    // CLI 1-based inclusive → lib 0-based exclusive (Python semantics).
-    auto translate_start = [](std::optional<std::int64_t> cli_v)
-                            -> std::optional<hawk::RangeBound> {
-        if (!cli_v) return std::nullopt;
-        return *cli_v > 0 ? *cli_v - 1 : *cli_v;
-    };
-
-    auto translate_end = [](std::optional<std::int64_t> cli_v)
-                          -> std::optional<hawk::RangeBound> {
-        if (!cli_v) return std::nullopt;
-        if (*cli_v > 0) return *cli_v;
-        if (*cli_v == -1) return std::nullopt;   // inclusive last → lib open end
-        return *cli_v + 1;
-    };
-
-    std::optional<std::int64_t> cli_start;
-    std::optional<std::int64_t> cli_end;
-
-    try {
-        if (colon == std::string_view::npos) {
-            // Bare number: positive N → :N (first N), negative N → N: (last N)
-            auto v = parse_required(arg);
-            if (v > 0) cli_end = v;
-            else       cli_start = v;
-        } else {
-            cli_start = parse_optional(arg.substr(0, colon));
-            cli_end   = parse_optional(arg.substr(colon + 1));
-        }
-    } catch (const std::exception& e) {
-        renderers::render_error(e.what(), std::cout);
-        return;
-    }
-
-    dispatch(hawk::SliceCommand{
-        .start = translate_start(cli_start),
-        .end   = translate_end(cli_end),
-    });
+    dispatch(SliceCommand{translate_to_lib_range(cmd.range)});
 }
 
 void REPL::execute_impl(const CliSort& cmd) {

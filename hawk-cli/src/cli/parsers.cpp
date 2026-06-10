@@ -72,6 +72,34 @@ std::vector<std::string> parse_select_column_list(std::string_view args_line) {
     return cols;
 }
 
+std::optional<std::int64_t> parse_cli_bound_optional(std::string_view s) {
+    if (s.empty()) return std::nullopt;
+    std::int64_t v;
+    if (!hawk::utils::parse_int(s, v) || v == 0) {
+        throw std::invalid_argument(
+            std::format("Invalid bound: '{}' (must be non-zero integer)", s)
+        );
+    }
+    return v;
+}
+
+CliRange parse_cli_range(std::string_view arg) {
+    auto colon = arg.find(':');
+    if (colon == std::string_view::npos) {
+        // Bare number: positive N → :N (first N), negative N → N: (last N)
+        auto v = parse_cli_bound_optional(arg);
+        if (!v) {
+            throw std::invalid_argument("Range cannot be empty");
+        }
+        if (*v > 0) return CliRange{.start = std::nullopt, .end = *v};
+        else        return CliRange{.start = *v, .end = std::nullopt};
+    }
+    return CliRange{
+        .start = parse_cli_bound_optional(arg.substr(0, colon)),
+        .end   = parse_cli_bound_optional(arg.substr(colon + 1)),
+    };
+}
+
 CliCommand set_name(std::string_view args_line) {
     auto args = utils::tokenize(args_line);
     if (args.size() != 2) {
@@ -289,26 +317,47 @@ CliCommand count        (std::string_view args_line) {
 
 CliCommand peek         (std::string_view args_line) {
     DisplayMode mode = DisplayMode::Vertical;
-
+    std::optional<std::string_view> range_arg;
     auto args = utils::tokenize(args_line);
-    std::string arg;
-
-    for (const auto& token : args) {
-        if (token == "--untruncated" || token == "-u") {
+    for (auto arg : args) {
+        if (arg == "--untruncated" || arg == "-u") {
             mode = DisplayMode::VerticalUntruncated;
-        } else if (arg.empty()) {
-            arg = std::string(token);
-        } else {
-            throw std::invalid_argument{
+        } else if (range_arg) {
+            throw std::invalid_argument(
                 std::format(
-                    "Unexpected argument for peek command: {}",
-                    token
+                    "peek takes at most one range argument. Got extra: {}",
+                    arg
                 )
-            };
+            );
+        } else {
+            range_arg = arg;
         }
     }
 
-    return CliPeek{std::move(arg), mode};
+    // No argument: default to first row of view.
+    if (!range_arg) {
+        return CliPeek{
+            .range = CliRange{.start = 1, .end = 1},
+            .raw   = false,
+            .mode  = mode,
+        };
+    }
+
+    std::string_view arg = *range_arg;
+    bool raw = false;
+    if (arg.starts_with('#')) {
+        raw = true;
+        arg = arg.substr(1);
+        if (arg.empty()) {
+            throw std::invalid_argument("peek: expected index after '#'");
+        }
+    }
+
+    return CliPeek{
+        .range = parse_cli_range(arg),
+        .raw   = raw,
+        .mode  = mode,
+    };
 }
 
 CliCommand head         (std::string_view args_line) {
@@ -392,7 +441,7 @@ CliCommand slice        (std::string_view args_line) {
             )
         };
     }
-    return CliSlice{std::string(args[0])};
+    return CliSlice{parse_cli_range(args[0])};
 }
 
 CliCommand sort         (std::string_view args_line) {

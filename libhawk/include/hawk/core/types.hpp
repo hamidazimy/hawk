@@ -4,6 +4,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <ratio>
 
 namespace hawk {
@@ -31,6 +32,11 @@ using ColumnIndex = std::size_t;
 // Frontends that prefer 1-based or inclusive-end conventions translate at
 // their boundary before constructing lib commands.
 using RangeBound = std::int64_t;
+
+struct Range {
+    std::optional<RangeBound> start;
+    std::optional<RangeBound> end;
+};
 
 using Ticks = std::chrono::duration<int64_t, std::ratio<1, 10'000'000>>;
 

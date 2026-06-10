@@ -3,6 +3,7 @@
 
 #include <hawk/hawk.hpp>
 
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -11,6 +12,10 @@
 
 namespace hawk::cli {
 
+struct CliRange {
+    std::optional<std::int64_t> start;  // 1-based
+    std::optional<std::int64_t> end;    // inclusive
+};
 enum class DisplayMode  { Horizontal, Vertical, VerticalUntruncated };
 enum class ExportMode   { Full, Projected };
 
@@ -22,13 +27,13 @@ struct CliSelect        { std::vector<std::string> columns; };
 struct CliSelectAdd     { std::vector<std::string> columns; };
 struct CliDeselect      { std::vector<std::string> columns; };
 struct CliCount         {};
-struct CliPeek          { std::string arg;    DisplayMode mode = DisplayMode::Vertical; };
+struct CliPeek          { CliRange range; bool raw = false; DisplayMode mode = DisplayMode::Vertical; };
 struct CliHead          { RecordCount n = 10; DisplayMode mode = DisplayMode::Horizontal; };
 struct CliTail          { RecordCount n = 10; DisplayMode mode = DisplayMode::Horizontal; };
 struct CliFilter        { hawk::FilterArgs args; };
 struct CliFilterExp     { hawk::FilterArgs args; };
 struct CliFilterExc     { hawk::FilterArgs args; };
-struct CliSlice         { std::string arg; };
+struct CliSlice         { CliRange range; };
 struct CliSort          { std::string column; bool is_desc = false; };
 struct CliDistinct      { std::string column; bool sort_by_value = false; bool sort_desc = false; };
 struct CliReset         { bool view = false; bool proj = false; bool sort = false; };
