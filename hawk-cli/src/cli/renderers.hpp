@@ -10,6 +10,7 @@
 #include <format>
 #include <iostream>
 #include <string>
+#include <string_view>
 
 namespace hawk::cli {
 namespace renderers {
@@ -18,6 +19,7 @@ struct RenderContext {
     const hawk::Schema& schema;
     std::size_t         terminal_width;
     std::ostream&       sout;
+    std::ostream&       serr;
 };
 
 struct RenderOptions {
@@ -37,13 +39,23 @@ void render_export(
     ExportMode mode
 );
 
-void render_execution_time(std::uint64_t ms,                    std::ostream& sout);
+void render_execution_time(std::uint64_t,               std::ostream&);
 
-void render_success (                                           std::ostream& sout);
-void render_error   (const std::string& message,                std::ostream& sout = std::cerr);
-void render_info    (const std::string& message,                std::ostream& sout);
-void render_warning (const std::string& warning,                std::ostream& sout);
-void render_warnings(const std::vector<std::string>& warnings,  std::ostream& sout);
+void render_success (                                   std::ostream&);
+
+void render_info    (std::string_view,                  std::ostream&);
+
+// The single-argument forms write to std::cerr. They exist for call sites
+// without a RenderContext (REPL exception handlers, startup errors in main).
+// All other renderers require a stream because they're always called from
+// inside render_result with ctx.sout.
+void render_error   (std::string_view,                  std::ostream&);
+void render_error   (std::string_view);
+
+void render_warning (std::string_view,                  std::ostream&);
+void render_warning (std::string_view);
+
+void render_warnings(const std::vector<std::string>&,   std::ostream&);
 
 } // namespace renderers
 } // namespace hawk::cli

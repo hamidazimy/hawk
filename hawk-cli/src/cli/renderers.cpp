@@ -449,7 +449,7 @@ void render_result(
     const RenderOptions& options
 ) {
     if (result.error.has_value()) {
-        render_error(result.error.value());
+        render_error(result.error.value(), ctx.serr);
         return;
     }
     if (result.payload.has_value()) {
@@ -462,7 +462,7 @@ void render_result(
     } else {
         render_success(ctx.sout);
     }
-    render_warnings(result.warnings, ctx.sout);
+    render_warnings(result.warnings, ctx.serr);
     render_execution_time(result.execution_time_ms, ctx.sout);
 }
 
@@ -523,21 +523,25 @@ void render_success (                                           std::ostream& so
     sout << hawk::cli::log_success("✔ Done.") << std::endl;
 }
 
-void render_error   (const std::string& message,                std::ostream& sout) {
-    sout << hawk::cli::log_error("✘ Error: " + message) << std::endl;
+void render_info    (std::string_view message,                  std::ostream& sout) {
+    sout << hawk::cli::log_info(std::string(message)) << std::endl;
 }
 
-void render_info    (const std::string& message,                std::ostream& sout) {
-    sout << hawk::cli::log_info(message) << std::endl;
+void render_error   (std::string_view message,                  std::ostream& serr) {
+    serr << hawk::cli::log_error(std::format("✘ Error: {}", message)) << std::endl;
 }
 
-void render_warning (const std::string& warning,                std::ostream& sout) {
-    sout << hawk::cli::log_warning("‼ Warning: " + warning) << std::endl;
+void render_error   (std::string_view message) { render_error(message, std::cerr); }
+
+void render_warning (std::string_view warning,                  std::ostream& serr) {
+    serr << hawk::cli::log_warning(std::format("‼ Warning: {}", warning)) << std::endl;
 }
 
-void render_warnings(const std::vector<std::string>& warnings,  std::ostream& sout) {
+void render_warning (std::string_view warning) { render_warning(warning, std::cerr); }
+
+void render_warnings(const std::vector<std::string>& warnings,  std::ostream& serr) {
     for (const auto& warning : warnings) {
-        render_warning(warning, sout);
+        render_warning(warning, serr);
     }
 }
 

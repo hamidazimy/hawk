@@ -36,7 +36,7 @@ private:
     std::string prompt() const;
 
     renderers::RenderContext make_ctx() const {
-        return {session_->schema(), terminal_width_, std::cout};
+        return {session_->schema(), terminal_width_, std::cout, std::cerr};
     }
 
     void dispatch(const hawk::LibCommand& cmd, const renderers::RenderOptions& options = {});

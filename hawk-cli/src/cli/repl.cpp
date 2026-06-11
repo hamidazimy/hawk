@@ -318,7 +318,7 @@ void REPL::execute_impl(const CliExport& cmd) {
 
     auto& records_result = std::get<RecordsResult>(result.payload.value());
 
-    renderers::RenderContext export_ctx{session_->schema(), 0, fout};
+    renderers::RenderContext export_ctx{session_->schema(), 0, fout, std::cerr};
     renderers::render_export(
         export_ctx,
         records_result,
@@ -334,9 +334,8 @@ void REPL::execute_impl(const CliExport& cmd) {
         records_result.projection &&
         !records_result.projection->is_identity()) {
         renderers::render_warning(
-            "Exported full row — active column selection not applied.\n\t"
-            "Use --projected to export current projection.",
-            std::cerr
+            "Exported full row — active column selection not applied.""\n"
+            "\t""Use --projected to export current projection."
         );
     }
 
