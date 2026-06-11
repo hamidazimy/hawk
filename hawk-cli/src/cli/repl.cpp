@@ -79,7 +79,7 @@ hawk::Range translate_to_lib_range(const CliRange& cli) {
 
 REPL::REPL(std::unique_ptr<hawk::Session> session)
     : session_(std::move(session))
-    , terminal_width_(cli::terminal_width())
+    , terminal_width_(console::terminal_width())
 {
     if (!session_) {
         throw std::invalid_argument("REPL requires a valid session");

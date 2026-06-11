@@ -1,7 +1,10 @@
 #include "console.hpp"
 
+#include <cstdio>
+
 #ifdef _WIN32
 #include <windows.h>
+#include <io.h>
 #endif
 
 #ifdef __unix__
@@ -10,6 +13,7 @@
 #endif
 
 namespace hawk::cli {
+namespace console {
 
 void setup_console() {
 #ifdef _WIN32
@@ -41,4 +45,17 @@ int terminal_width() {
 #endif
 }
 
+bool is_tty(std::FILE* stream) {
+#ifdef _WIN32
+    return _isatty(_fileno(stream)) != 0;
+#else
+    return isatty(fileno(stream)) != 0;
+#endif
+}
+
+bool stdin_is_tty()  { return is_tty(stdin); }
+bool stdout_is_tty() { return is_tty(stdout); }
+bool stderr_is_tty() { return is_tty(stderr); }
+
+} // namespace console
 } // namespace hawk::cli

@@ -1,6 +1,8 @@
 #ifndef HAWK_CLI_SPINNER_HPP
 #define HAWK_CLI_SPINNER_HPP
 
+#include <helpers/console.hpp>
+
 #include <atomic>
 #include <chrono>
 #include <iostream>
@@ -13,8 +15,14 @@ namespace hawk::cli {
 class Spinner {
 public:
     explicit Spinner(std::string_view message)
-        : running_(true)
-        , thread_([this, msg = std::string(message)]() {
+        : running_(false)
+    {
+        if (!console::stderr_is_tty()) {
+            return;  // no TTY → spinner is a no-op
+        }
+
+        running_ = true;
+        thread_  = std::thread([this, msg = std::string(message)]() {
             const std::string frames[] = {"⢎ ", "⠎⠁", "⠊⠑", "⠈⠱", " ⡱", "⢀⡰", "⢄⡠", "⢆⡀"};
             int i = 0;
             while (running_) {
@@ -25,8 +33,8 @@ public:
             // Clear the spinner line
             std::cerr << "\r" << std::string(msg.size() + 4, ' ') << "\r";
             std::cerr.flush();
-        })
-    {}
+        });
+    }
 
     ~Spinner() {
         running_ = false;
