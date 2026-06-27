@@ -12,6 +12,7 @@
 #include <format>
 #include <iomanip>
 #include <iostream>
+#include <numeric>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -69,8 +70,10 @@ void render_hline(
     if (index_width > 0) {
         ctx.sout << std::setw(index_width) << std::right << std::setfill(' ') << ""  << " " << index_sep << " ";
     }
-    for (std::size_t i = 0; i < column_widths.size(); ++i)
-        ctx.sout << std::setw(column_widths[i]) << std::setfill(ch) << "" << " ";
+    for (std::size_t i = 0; i < column_widths.size(); ++i) {
+        if (i != 0) ctx.sout << " "; // column separator
+        ctx.sout << std::setw(column_widths[i]) << std::setfill(ch) << "";
+    }
     ctx.sout << "\n" << std::setfill(' ');
 }
 
@@ -86,8 +89,10 @@ void render_colns(
         ctx.sout << std::setw(index_width) << std::setfill(' ') << "" << " " << index_sep << " ";
     }
     ctx.sout << std::left;
-    for (std::size_t i = 0; i < column_widths.size(); ++i)
-        ctx.sout << std::setw(column_widths[i]) << std::setfill(ch) << std::format("[$col{}]", projection->at(i) + 1) << " ";
+    for (std::size_t i = 0; i < column_widths.size(); ++i) {
+        if (i != 0) ctx.sout << " "; // column separator
+        ctx.sout << std::setw(column_widths[i]) << std::setfill(ch) << std::format("[$col{}]", projection->at(i) + 1);
+    }
     ctx.sout << "\n" << std::setfill(' ');
 }
 
@@ -186,27 +191,55 @@ void render_records_horizontal(
     const RenderContext& ctx,
     const hawk::RecordsResult& res
 ) {
-    const std::size_t max_col_width = 20;
     const std::size_t min_col_width = 8;
-    ColumnCount column_count = res.projection->size();
-    std::vector<std::size_t> column_widths(column_count, 0);
+    const ColumnCount column_count = res.projection->size();
+
     std::size_t index_width = 1;
-    for (ColumnIndex i = 0; i < column_count; ++i) {
-        ColumnIndex col = res.projection->at(i);
-        column_widths[i] = std::max(min_col_width, ctx.schema.column(col).name.size());
-    }
     for (const auto& row : res.rows) {
-        for (std::size_t i= 0; i < column_count; ++i) {
-            column_widths[i] = std::min(
-                max_col_width,
-                std::max(
-                    column_widths[i],
-                    row.get_projected(res.projection, i).size()
-                )
-            );
-        }
         index_width = std::max(index_width, hawk::cli::utils::num_digits(row.index() + 1));
     }
+
+    // Natural width: widest of header name and any data value, uncapped.
+    std::vector<std::size_t> natural_widths(column_count, 0);
+    for (ColumnIndex i = 0; i < column_count; ++i) {
+        ColumnIndex col = res.projection->at(i);
+        natural_widths[i] = std::max(min_col_width, ctx.schema.column(col).name.size());
+    }
+    for (const auto& row : res.rows) {
+        for (std::size_t i = 0; i < column_count; ++i) {
+            natural_widths[i] = std::max(natural_widths[i], row.get_projected(res.projection, i).size());
+        }
+    }
+
+    // Budget: terminal width minus index gutter and one separator space per column.
+    // If terminal_width is too small to even hold the index gutter, bail out and
+    // let columns use their minimum widths (rows will wrap).
+    const std::size_t index_gutter  = index_width + 2;
+    const std::size_t separator_sum = column_count; // 1 space per column
+    std::vector<std::size_t> column_widths(column_count, min_col_width);
+
+    if (ctx.terminal_width > index_gutter + separator_sum) {
+        std::size_t budget = ctx.terminal_width - index_gutter - separator_sum;
+
+        // Distribute budget to columns in ascending order of additional need.
+        // This ensures columns that need a little more get served before we
+        // hit the limit, rather than one greedy wide column taking everything.
+        std::vector<ColumnIndex> order(column_count);
+        std::iota(order.begin(), order.end(), 0);
+        std::sort(order.begin(), order.end(), [&](ColumnIndex a, ColumnIndex b) {
+            return natural_widths[a] < natural_widths[b];
+        });
+
+        std::size_t columns_remaining = column_count;
+        for (ColumnIndex i : order) {
+            const std::size_t fair_share = budget / columns_remaining;
+            const std::size_t allotment  = std::min(natural_widths[i], std::max(min_col_width, fair_share));
+            column_widths[i] = allotment;
+            budget -= allotment;
+            --columns_remaining;
+        }
+    }
+
     render_header(ctx, column_widths, index_width, res.projection);
     for (const auto& row : res.rows) {
         render_row_horizontal(ctx, row, column_widths, index_width, res.projection);
