@@ -339,6 +339,11 @@ void REPL::execute_impl(const CliExport& cmd) {
         );
     }
 
+    renderers::render_info(
+        std::format("Exported {} records to {}", records_result.rows.size(), cmd.path)
+        , std::cout
+    );
+
     renderers::render_execution_time(result.execution_time_ms, std::cout);
 }
 
