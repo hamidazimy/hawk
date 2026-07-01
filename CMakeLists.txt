@@ -19,6 +19,7 @@ endif()
 # -----------------------------------------------------------------------------
 
 option(HAWK_STATIC_BUILD "Build with static linking" ON)
+option(HAWK_BUILD_TESTS "Build the test suite" OFF)
 
 find_package(Git QUIET)
 
@@ -115,6 +116,15 @@ add_subdirectory(hawk-cli)
 add_subdirectory(third_party/replxx)
 
 # -----------------------------------------------------------------------------
+# Tests (opt-in)
+# -----------------------------------------------------------------------------
+
+if(HAWK_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
+
+# -----------------------------------------------------------------------------
 # Build summary
 # -----------------------------------------------------------------------------
 
@@ -126,5 +136,6 @@ message(STATUS "Build type:   ${CMAKE_BUILD_TYPE}")
 message(STATUS "Compiler:     ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
 message(STATUS "C++ standard: ${CMAKE_CXX_STANDARD}")
 message(STATUS "Static build: ${HAWK_STATIC_BUILD}")
+message(STATUS "Build tests:  ${HAWK_BUILD_TESTS}")
 message(STATUS "Git commit:   ${GIT_COMMIT_HASH}")
 message(STATUS "")
