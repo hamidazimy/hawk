@@ -1,0 +1,26 @@
+count
+columns
+head 3
+tail 3
+distinct result
+distinct source_ip
+filter result == "FAILURE"
+distinct source_ip
+distinct username
+reset --view
+filter source_ip == "185.220.101.47"
+distinct result
+filter result == "SUCCESS"
+peek 1
+select timestamp, username, message
+sort timestamp
+head 8
+reset
+filter source_ip == "91.219.236.222"
+select timestamp, username, auth_method, result, message
+head 2
+reset
+filter source_ip == "185.220.101.47"
+filter+ source_ip == "91.219.236.222"
+sort timestamp
+export incident_2026-01-29.csv
