@@ -38,10 +38,6 @@ else()
     set(GIT_COMMIT_HASH "unknown")
 endif()
 
-if(TEST_BUILD)
-    add_compile_definitions(TEST_BUILD)
-endif()
-
 # -----------------------------------------------------------------------------
 # C++ standard
 # -----------------------------------------------------------------------------
