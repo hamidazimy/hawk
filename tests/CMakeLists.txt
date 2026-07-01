@@ -5,6 +5,8 @@
 add_executable(hawk-tests
     main.cpp
     smoke.cpp
+    utils_test.cpp
+    datetime_parser_test.cpp
 )
 
 # doctest is vendored as a single header under third_party/doctest. Mark the
