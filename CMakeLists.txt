@@ -7,6 +7,14 @@ cmake_minimum_required(VERSION 3.15)
 project(hawk VERSION 0.6.9 LANGUAGES CXX)
 
 # -----------------------------------------------------------------------------
+# Default build type
+# -----------------------------------------------------------------------------
+
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
+
+# -----------------------------------------------------------------------------
 # Build options
 # -----------------------------------------------------------------------------
 
