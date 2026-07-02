@@ -33,5 +33,7 @@ filtering flags:
 
 ## Status
 
-The suite currently contains only a smoke test that confirms the framework links
-and runs. Real coverage will follow.
+The suite currently covers the utility helpers in `libhawk`
+(`hawk/utils/utils.hpp` and `hawk/utils/datetime_parser.hpp`). Coverage of the
+remaining subsystems — schema, type inference, filter predicates, view,
+projection, and range resolution — is added in follow-up phases.
