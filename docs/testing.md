@@ -33,7 +33,13 @@ filtering flags:
 
 ## Status
 
-The suite currently covers the utility helpers in `libhawk`
-(`hawk/utils/utils.hpp` and `hawk/utils/datetime_parser.hpp`). Coverage of the
-remaining subsystems — schema, type inference, filter predicates, view,
-projection, and range resolution — is added in follow-up phases.
+The suite currently covers:
+
+- utility helpers (`hawk/utils/utils.hpp`)
+- datetime parsing (`hawk/utils/datetime_parser.hpp`)
+- `Schema`
+- `Projection`
+- range resolution (`resolve_range`)
+
+Coverage of remaining subsystems — type inference, format inference, filter
+predicates, and view — is added in follow-up phases.
