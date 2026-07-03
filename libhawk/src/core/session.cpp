@@ -232,62 +232,6 @@ bool compare_sort_keys(const ComparableKey& ka, const ComparableKey& kb, bool is
     }, ka);
 }
 
-struct ResolvedRange {
-    RecordIndex start;
-    RecordIndex end;
-    bool        clamped;       // a bound resolved past view edges
-    bool        inverted;      // start > end after resolution
-};
-
-// Resolve a [start, end) range using Python-style slicing semantics:
-//   - 0-based indexing
-//   - End-exclusive
-//   - Negative values count from the end (-1 = last element, -N = total - N)
-//   - nullopt start means "from beginning" (0)
-//   - nullopt end means "to end" (total)
-//
-// Out-of-range bounds clamp to [0, total]. Inversion (start > end after
-// resolution) is reported via the inverted flag — the caller decides whether
-// to treat it as an error or as an empty range.
-ResolvedRange resolve_range(
-    const Range& range,
-    RecordCount  total
-) {
-    auto resolve = [total](RangeBound v) -> std::pair<std::int64_t, bool> {
-        const auto signed_total = static_cast<std::int64_t>(total);
-        if (v < 0) {
-            const auto resolved = signed_total + v;
-            return {resolved, resolved < 0};
-        }
-        return {v, v > signed_total};
-    };
-
-    auto clamp = [total](std::int64_t v) -> RecordIndex {
-        if (v < 0) return 0;
-        if (static_cast<RecordCount>(v) > total) return total;
-        return static_cast<RecordIndex>(v);
-    };
-
-    std::int64_t start_signed = 0;
-    bool         start_clamped = false;
-    if (range.start.has_value()) {
-        std::tie(start_signed, start_clamped) = resolve(*range.start);
-    }
-
-    std::int64_t end_signed = static_cast<std::int64_t>(total);
-    bool         end_clamped = false;
-    if (range.end.has_value()) {
-        std::tie(end_signed, end_clamped) = resolve(*range.end);
-    }
-
-    return {
-        .start    = clamp(start_signed),
-        .end      = clamp(end_signed),
-        .clamped  = start_clamped || end_clamped,
-        .inverted = start_signed > end_signed,    // ← check BEFORE clamping
-    };
-}
-
 } // namespace
 
 std::optional<ColumnIndex> Session::find_column(std::string_view name) const {

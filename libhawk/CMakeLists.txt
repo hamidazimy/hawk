@@ -13,6 +13,7 @@ else()
 endif()
 
 add_library(hawk STATIC
+    src/core/types.cpp
     src/core/session_builder.cpp
     src/core/session.cpp
     src/core/log_file.cpp

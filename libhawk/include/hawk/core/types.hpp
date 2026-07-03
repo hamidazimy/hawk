@@ -38,6 +38,34 @@ struct Range {
     std::optional<RangeBound> end;
 };
 
+struct ResolvedRange {
+    RecordIndex start;
+    RecordIndex end;
+    bool        clamped;   // true if any bound was resolved beyond the edge
+    bool        inverted;  // true if start > end (pre-clamp); indices left as-is
+};
+
+// Resolve a [start, end) range using Python-style slicing semantics:
+//   - 0-based indexing
+//   - end-exclusive
+//   - negative values count from the end (-1 = last element, -N = total - N)
+//   - nullopt start means "from beginning" (0)
+//   - nullopt end means "to end" (total)
+//
+// Out-of-range bounds clamp to [0, total]. The `clamped` flag indicates a
+// bound was resolved past the edge (strictly beyond total, or before 0);
+// a bound landing exactly at the edge (start == 0, end == total) is not
+// flagged. Inversion (start > end after resolution) is reported via the
+// `inverted` flag — the caller decides whether to treat it as an error or
+// as an empty range. Inversion is checked on pre-clamp signed values, so
+// {5, 3} on a 1-row view is correctly flagged inverted rather than
+// masquerading as clamped-empty.
+//
+// The `inverted` flag does not normalise the returned indices: callers who
+// don't check `inverted` will see start > end and must handle that case,
+// or use `end - start` at their own risk (underflow on unsigned types).
+ResolvedRange resolve_range(const Range& range, RecordCount total);
+
 using Ticks = std::chrono::duration<int64_t, std::ratio<1, 10'000'000>>;
 
 using SysTicks = std::chrono::sys_time<Ticks>;
