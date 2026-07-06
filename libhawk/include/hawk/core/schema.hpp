@@ -39,6 +39,13 @@ private:
     std::vector<ColumnSchema> columns_;
 };
 
+std::optional<std::string> resolve_columns(
+    const Schema&                   schema,
+    const std::vector<std::string>& names,
+    std::vector<ColumnIndex>&       out,
+    bool                            case_sensitive = true
+);
+
 } // namespace hawk
 
 #endif // HAWK_SCHEMA_HPP

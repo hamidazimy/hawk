@@ -48,4 +48,21 @@ void Schema::set_column_type(ColumnIndex index, ColumnType type,
         : std::nullopt;
 }
 
+std::optional<std::string> resolve_columns(
+    const Schema&                   schema,
+    const std::vector<std::string>& names,
+    std::vector<ColumnIndex>&       out,
+    bool                            case_sensitive
+) {
+    out.reserve(names.size());
+    for (const auto& name : names) {
+        auto index = schema.find_column(name, case_sensitive);
+        if (!index.has_value()) {
+            return std::format("Unknown column: {}", name);
+        }
+        out.push_back(*index);
+    }
+    return std::nullopt;
+}
+
 } // namespace hawk

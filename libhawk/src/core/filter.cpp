@@ -3,10 +3,13 @@
 #include <hawk/core/types.hpp>
 #include <hawk/core/row.hpp>
 #include <hawk/core/column.hpp>
+#include <hawk/core/schema.hpp>
+#include <hawk/core/commands.hpp>
 #include <hawk/utils/utils.hpp>
 #include <hawk/utils/datetime_parser.hpp>
 
 #include <chrono>
+#include <format>
 #include <utility>
 
 namespace hawk {
@@ -112,6 +115,74 @@ bool FilterPredicate::compare_string(std::string_view lhs, std::string_view rhs)
 
 bool RowSearchPredicate::operator()(std::string_view raw_record) const {
     return utils::contains(raw_record, needle, case_sensitive);
+}
+
+PrepareFilterResult prepare_filter(
+    const Schema&     schema,
+    const FilterArgs& args,
+    bool              case_sensitive
+) {
+    if (args.row_search) {
+        if (args.op != FilterOp::HAS) {
+            return PrepareFilterResult::err("$row only supports the 'has' operator");
+        }
+        return PrepareFilterResult::ok(RowSearchPredicate{args.value, case_sensitive});
+    }
+
+    auto col_idx = schema.find_column(args.column, case_sensitive);
+    if (!col_idx) {
+        return PrepareFilterResult::err(std::format("Unknown column: {}", args.column));
+    }
+
+    const ColumnType column_type = schema.column_type(*col_idx);
+
+    if (args.op == FilterOp::HAS && column_type != ColumnType::String) {
+        return PrepareFilterResult::err(std::format(
+            "Operator 'has' is only valid for string columns, column '{}' is {}",
+            args.column, column_type_name(column_type)
+        ));
+    }
+
+    std::optional<std::string> datetime_pattern;
+    if (column_type == ColumnType::DateTime) {
+        const auto& col_schema = schema.column(*col_idx);
+        if (!col_schema.datetime_pattern.has_value()) {
+            return PrepareFilterResult::err(std::format(
+                "Column '{}' has no datetime pattern — cannot filter", args.column
+            ));
+        }
+        datetime_pattern = col_schema.datetime_pattern;
+        if (!utils::parse_datetime(args.value, *datetime_pattern)) {
+            return PrepareFilterResult::err(std::format(
+                "Filter value '{}' cannot be parsed as datetime pattern '{}' for column '{}'",
+                args.value, *datetime_pattern, args.column
+            ));
+        }
+    }
+
+    if (column_type == ColumnType::Integer) {
+        std::int64_t dummy;
+        if (!utils::parse_int(args.value, dummy)) {
+            return PrepareFilterResult::err(std::format(
+                "Filter value '{}' cannot be parsed as {} for column '{}'",
+                args.value, column_type_name(column_type), args.column
+            ));
+        }
+    }
+
+    if (column_type == ColumnType::Float) {
+        double dummy;
+        if (!utils::parse_double(args.value, dummy)) {
+            return PrepareFilterResult::err(std::format(
+                "Filter value '{}' cannot be parsed as {} for column '{}'",
+                args.value, column_type_name(column_type), args.column
+            ));
+        }
+    }
+
+    return PrepareFilterResult::ok(
+        FilterPredicate{*col_idx, column_type, args.op, args.value, case_sensitive, datetime_pattern}
+    );
 }
 
 } // namespace hawk

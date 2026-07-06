@@ -7,10 +7,13 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <variant>
 
 namespace hawk { class Row; }
+namespace hawk { class Schema; }
 namespace hawk { enum class ColumnType; }
+namespace hawk { struct FilterArgs; }
 
 namespace hawk {
 
@@ -61,6 +64,25 @@ struct RowSearchPredicate {
 };
 
 using FilterPredicateVariant = std::variant<FilterPredicate, RowSearchPredicate>;
+
+// TODO(C++23): replace with std::expected<FilterPredicateVariant, std::string>
+struct PrepareFilterResult {
+    std::optional<FilterPredicateVariant> pred;  // set on success
+    std::optional<std::string>            error; // set on failure
+
+    static PrepareFilterResult ok(FilterPredicateVariant p) {
+        return {std::move(p), std::nullopt};
+    }
+    static PrepareFilterResult err(std::string e) {
+        return {std::nullopt, std::move(e)};
+    }
+};
+
+PrepareFilterResult prepare_filter(
+    const Schema&     schema,
+    const FilterArgs& args,
+    bool              case_sensitive = true
+);
 
 } // namespace hawk
 
