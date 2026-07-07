@@ -14,6 +14,7 @@ add_executable(hawk-tests
     row_search_predicate_test.cpp
     prepare_filter_test.cpp
     resolve_columns_test.cpp
+    view_test.cpp
 )
 
 # doctest is vendored as a single header under third_party/doctest. Mark the
