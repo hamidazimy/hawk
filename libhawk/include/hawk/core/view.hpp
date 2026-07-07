@@ -37,6 +37,9 @@ public:
         return View(total_records);
     }
 
+    // Restores the view to a full identity over total_records_. This is not
+    // an "undo the last operation" — reset always returns to the whole set
+    // of records regardless of prior filter/slice/sort history.
     void reset() {
         indices_.clear();
         is_identity_ = true;
@@ -46,6 +49,9 @@ public:
         return is_identity_ ? total_records_ : indices_.size();
     }
 
+    // Unchecked, fast.
+    // Use at() for bounds-checked access; use operator[] when
+    // the caller has already validated i < size().
     RecordIndex operator[](std::size_t i) const noexcept {
         return is_identity_ ? i : indices_[i];
     }
@@ -62,6 +68,15 @@ public:
             func((*this)[i]);
         }
     }
+
+    // filter and slice always return non-identity views, even when the result
+    // is functionally equivalent to the source (e.g., an all-accept predicate
+    // or slice(0, size())). The returned view carries an explicit index vector
+    // preserving its provenance as a derived view. Note that "does this view
+    // contain all source records?" is a stronger question than "is this an
+    // identity view?" — a fully-populated but sorted view is not an identity
+    // view. Callers who need to answer either question must inspect the view's
+    // contents; the is-identity distinction is not exposed publicly.
 
     template <typename Predicate> View filter(Predicate&& predicate) const {
         std::vector<RecordIndex> result;
