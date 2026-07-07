@@ -39,6 +39,13 @@ private:
     std::vector<ColumnSchema> columns_;
 };
 
+// Resolves each name in `names` to its ColumnIndex, appending to `out` in
+// request order. Returns std::nullopt on success, or an error message naming
+// the first name that could not be resolved.
+//
+// Note: `out` is appended to, not cleared. Callers must pass an empty vector
+// or accept accumulation across calls. On error, `out` retains the indices
+// resolved up to (but not including) the first unknown name — a partial fill.
 std::optional<std::string> resolve_columns(
     const Schema&                   schema,
     const std::vector<std::string>& names,

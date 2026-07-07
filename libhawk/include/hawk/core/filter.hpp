@@ -39,6 +39,12 @@ struct FilterPredicate {
     std::optional<std::string>  datetime_pattern;   // set when column_type == DateTime
     mutable RecordCount         skipped = 0;        // rows where the field could not be parsed
 
+    // Does NOT validate `rhs` against `type` — it assumes prepare_filter has
+    // already validated it. The constructor merely pre-parses `rhs` into the
+    // typed field (rhs_int/rhs_float/rhs_ticks); if `rhs` is unparseable for
+    // `type`, that field silently defaults to 0. Bypassing prepare_filter with
+    // an unparseable RHS therefore yields a predicate that compares against 0
+    // rather than reporting an error. prepare_filter is the sanctioned entry point.
     FilterPredicate(
         ColumnIndex                 col,
         ColumnType                  type,
