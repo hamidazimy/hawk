@@ -41,6 +41,7 @@ The suite currently covers:
 - `Projection`
 - range resolution (`resolve_range`)
 - filter (`FilterPredicate`, `RowSearchPredicate`, `prepare_filter`, `resolve_columns`)
+- `View`
 
-Coverage of remaining subsystems — type inference, format inference, and view —
-is added in follow-up phases.
+Coverage of remaining subsystems — type inference and format inference — is
+added in follow-up phases.
