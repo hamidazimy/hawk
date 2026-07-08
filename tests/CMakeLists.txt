@@ -15,6 +15,9 @@ add_executable(hawk-tests
     prepare_filter_test.cpp
     resolve_columns_test.cpp
     view_test.cpp
+    format_detectors_test.cpp
+    format_inferer_test.cpp
+    type_inferer_test.cpp
 )
 
 # doctest is vendored as a single header under third_party/doctest. Mark the
