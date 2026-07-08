@@ -42,6 +42,7 @@ The suite currently covers:
 - range resolution (`resolve_range`)
 - filter (`FilterPredicate`, `RowSearchPredicate`, `prepare_filter`, `resolve_columns`)
 - `View`
+- type inference (`TypeInferrer`)
+- format inference (`FormatInferer` and its detectors)
 
-Coverage of remaining subsystems — type inference and format inference — is
-added in follow-up phases.
+Session-level integration coverage is added in a follow-up phase.
