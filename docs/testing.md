@@ -44,11 +44,11 @@ The suite currently covers:
 - `View`
 - type inference (`TypeInferrer`)
 - format inference (`FormatInferer` and its detectors)
-- Session integration — basics (config, columns, count, records), filter,
-  sort, distinct, and raw records access, driven through `Session::execute`
-  against real CSV fixtures
+- Session integration — command execution basics (config, columns, count,
+  records), filter, sort (with stability verification), distinct, count, raw
+  records access, filter composition (`filter+`/`filter-`), slice, projection
+  (`select`/`select+`/`select-`), schema mutation (`set type`/`set name`),
+  reset in all its forms, and composed command sequences, all driven through
+  `Session::execute` against real CSV fixtures
 
-Session integration coverage is in progress: the remaining pieces — filter
-composition (`filter+`/`filter-`), projection (`select`/`select+`/`select-`),
-and state transitions (`reset`, `set type`/`set name`) — are added in a
-follow-up phase.
+Session integration coverage is complete (phases 7a and 7b).
