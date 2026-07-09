@@ -16,6 +16,7 @@
 #include <hawk/core/results.hpp>
 #include <hawk/core/schema.hpp>
 #include <hawk/core/row.hpp>
+#include <hawk/core/projection.hpp>
 #include <hawk/utils/format_inference.hpp>
 
 #include <memory>
@@ -80,6 +81,19 @@ inline std::vector<std::string> record_field(const Session& s,
 inline std::vector<std::string> view_column(Session& s, std::string_view col_name) {
     auto r = s.execute(RecordsCommand::all_view_records());
     return record_field(s, r, col_name);
+}
+
+// The projection is only observable through a RecordsResult (there is no
+// dedicated command). The projection pointer targets the session's own member,
+// so the values it exposes stay valid after the CommandResult is destroyed.
+inline std::vector<ColumnIndex> projection_columns(Session& s) {
+    auto r = s.execute(RecordsCommand::all_view_records());
+    return payload_as<RecordsResult>(r).projection->columns();
+}
+
+inline bool projection_is_identity(Session& s) {
+    auto r = s.execute(RecordsCommand::all_view_records());
+    return payload_as<RecordsResult>(r).projection->is_identity();
 }
 
 } // namespace hawk::test

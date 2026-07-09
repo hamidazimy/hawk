@@ -23,6 +23,12 @@ add_executable(hawk-tests
     session_sort_test.cpp
     session_distinct_test.cpp
     session_records_test.cpp
+    session_filter_composition_test.cpp
+    session_slice_test.cpp
+    session_projection_test.cpp
+    session_schema_mutation_test.cpp
+    session_reset_test.cpp
+    session_sequences_test.cpp
 )
 
 # doctest is vendored as a single header under third_party/doctest. Mark the
