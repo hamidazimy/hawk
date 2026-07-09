@@ -18,6 +18,11 @@ add_executable(hawk-tests
     format_detectors_test.cpp
     format_inferer_test.cpp
     type_inferer_test.cpp
+    session_basics_test.cpp
+    session_filter_test.cpp
+    session_sort_test.cpp
+    session_distinct_test.cpp
+    session_records_test.cpp
 )
 
 # doctest is vendored as a single header under third_party/doctest. Mark the
@@ -25,6 +30,12 @@ add_executable(hawk-tests
 # project's -Wall/-Wextra/-Wpedantic flags; our own test sources still are.
 target_include_directories(hawk-tests SYSTEM PRIVATE
     ${CMAKE_SOURCE_DIR}/third_party
+)
+
+# Session integration tests read checked-in CSV fixtures. Pass their absolute
+# directory so the tests do not depend on the working directory at run time.
+target_compile_definitions(hawk-tests PRIVATE
+    HAWK_TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures"
 )
 
 # Tests exercise the core engine only; the CLI is a separate, thin layer.
