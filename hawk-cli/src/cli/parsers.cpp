@@ -100,6 +100,20 @@ CliRange parse_cli_range(std::string_view arg) {
     };
 }
 
+// Like parse_cli_range, but a bare number N means the single-element range
+// {N, N} ("exactly row N") rather than slice's "first N" convention.
+//Used by peek, whose help text promises `peek i` shows row i.
+CliRange parse_cli_index_range(std::string_view arg) {
+    if (arg.find(':') != std::string_view::npos) {
+        return parse_cli_range(arg);
+    }
+    auto v = parse_cli_bound_optional(arg);
+    if (!v) {
+        throw std::invalid_argument("Range cannot be empty");
+    }
+    return CliRange{.start = *v, .end = *v};
+}
+
 CliCommand set_name(std::string_view args_line) {
     auto args = utils::tokenize(args_line);
     if (args.size() != 2) {
@@ -354,7 +368,7 @@ CliCommand peek         (std::string_view args_line) {
     }
 
     return CliPeek{
-        .range = parse_cli_range(arg),
+        .range = parse_cli_index_range(arg),
         .raw   = raw,
         .mode  = mode,
     };
