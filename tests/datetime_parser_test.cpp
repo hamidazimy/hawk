@@ -118,7 +118,26 @@ TEST_CASE("parse_datetime applies timezone offsets") {
         REQUIRE(off.has_value());
         CHECK(*utc == *off);
         CHECK(*utc == make_time(2024, 1, 1, 12, 0, 0));
+        // Pin a compact-offset input to its hand-computed UTC instant:
+        // 13:45:30 at +0100 is 12:45:30 UTC (epoch 1704113130 s).
+        auto pinned = parse_datetime("2024-01-01 13:45:30+0100", pat);
+        REQUIRE(pinned.has_value());
+        CHECK(*pinned == make_time(2024, 1, 1, 12, 45, 30));
     }
+}
+
+TEST_CASE("parse_datetime accepts both compact and colon-separated UTC offsets") {
+    // %z fully consumes only compact offsets (-0500); %Ez only colon/bare
+    // forms (-05:00, -05). parse_datetime retries with %Ez so the +tz token
+    // covers every ISO 8601 offset spelling, at the same instant.
+    const std::string_view pat = "YYYY-MM-DD hh:mm:ss+tz";
+    auto colon   = parse_datetime("2024-01-01 13:45:30-05:00", pat);
+    auto compact = parse_datetime("2024-01-01 13:45:30-0500", pat);
+    REQUIRE(colon.has_value());
+    REQUIRE(compact.has_value());
+    CHECK(*colon == *compact);
+    // Trailing content after an offset is still rejected.
+    CHECK_FALSE(parse_datetime("2024-01-01 13:45:30-05:00x", pat).has_value());
 }
 
 // -----------------------------------------------------------------------------

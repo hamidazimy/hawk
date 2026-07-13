@@ -59,6 +59,17 @@ std::optional<std::string> pattern_to_chrono_fmt(std::string_view pattern) {
     return fmt;
 }
 
+// Parses `s` against `fmt`, requiring the entire input to be consumed.
+// A datetime that merely *starts* valid is not valid.
+std::optional<SysTicks> parse_fully(const std::string& s, const std::string& fmt) {
+    SysTicks tp;
+    std::istringstream ss{s};
+    ss >> std::chrono::parse(fmt, tp);
+    if (ss.fail()) return std::nullopt;
+    if (ss.peek() != std::istringstream::traits_type::eof()) return std::nullopt;
+    return tp;
+}
+
 } // anonymous namespace
 
 // -----------------------------------------------------------------------------
@@ -69,14 +80,19 @@ std::optional<SysTicks> parse_datetime(std::string_view s, std::string_view patt
     auto chrono_fmt = pattern_to_chrono_fmt(pattern);
     if (!chrono_fmt.has_value()) return std::nullopt;
 
-    SysTicks tp;
-    std::istringstream ss{std::string(s)};
-    ss >> std::chrono::parse(*chrono_fmt, tp);
-    if (ss.fail()) return std::nullopt;
-    // Reject trailing content: a datetime that merely *starts* valid is not
-    // valid. peek() forces EOF detection if parse consumed the whole input.
-    if (ss.peek() != std::istringstream::traits_type::eof()) return std::nullopt;
-    return tp;
+    const std::string input{s};
+    if (auto tp = parse_fully(input, *chrono_fmt)) return tp;
+
+    // %z only fully consumes compact offsets (-0500); %Ez only colon/bare
+    // forms (-05:00, -05). Both yield the correct instant. Retry with %Ez so
+    // the +tz token accepts every ISO 8601 offset spelling.
+    if (auto pos = chrono_fmt->find("%z"); pos != std::string::npos) {
+        std::string ez_fmt = *chrono_fmt;
+        ez_fmt.replace(pos, 2, "%Ez");
+        return parse_fully(input, ez_fmt);
+    }
+
+    return std::nullopt;
 }
 
 std::optional<std::string> validate_datetime_pattern(std::string_view pattern) {
