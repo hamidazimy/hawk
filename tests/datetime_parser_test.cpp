@@ -6,12 +6,12 @@
 // parses into a SysTicks (a sys_time with 100ns precision). validate_datetime_pattern
 // reports whether a pattern is well-formed.
 //
-// Scope: public API only. Two behaviours discovered while writing these tests are
-// worth a maintainer's attention and are called out inline:
+// Scope: public API only. One behaviour discovered while writing these tests is
+// worth a maintainer's attention and is called out inline:
 //   1. A pattern with no date component (time-only) never parses, because a
 //      sys_time cannot be formed from a time-of-day alone. Documented below.
-//   2. Trailing content after a full match is accepted rather than rejected.
-//      That test is marked skipped (see the bottom of this file).
+// Trailing content after a full match is rejected (full-consumption check via
+// ss.peek()); see the "rejects trailing content" test below.
 #include <doctest/doctest.h>
 
 #include <hawk/utils/datetime_parser.hpp>
@@ -195,13 +195,19 @@ TEST_CASE("parse_datetime cannot parse a time-only pattern") {
     CHECK_FALSE(parse_datetime("13:45:30", "hh:mm:ss").has_value());
 }
 
-// TODO: bug — parse_datetime does not verify the whole input was consumed, so
-// trailing content after an otherwise complete match is silently accepted. The
-// implementation checks ss.fail() but not ss.eof()/remaining characters. This
-// test encodes the *intended* behaviour (rejection) and is skipped so the suite
-// stays green; remove the skip once the parser is fixed. Reported for triage.
-TEST_CASE("parse_datetime rejects trailing content" * doctest::skip()) {
+// A datetime that merely *starts* valid is not valid: any content left over
+// after a successful pattern match causes rejection (enforced via ss.peek()).
+TEST_CASE("parse_datetime rejects trailing content") {
     CHECK_FALSE(parse_datetime("2024-01-01 extra", "YYYY-MM-DD").has_value());
+    CHECK_FALSE(parse_datetime("2024-01-01T10:00:00Zx", "YYYY-MM-DDThh:mm:ssZ").has_value());
+    // Trailing single space is trailing content; fields are trimmed upstream
+    // before reaching parse_datetime, so no legitimate value carries one.
+    CHECK_FALSE(parse_datetime("2024-01-01 10:00:00 ", "YYYY-MM-DD hh:mm:ss").has_value());
+    // Truncated input must still be rejected — guards against a regression in
+    // the ss.fail() check that runs before the trailing-content check.
+    CHECK_FALSE(parse_datetime("2024-01-0", "YYYY-MM-DD").has_value());
+    // Exact match is still accepted.
+    CHECK(parse_datetime("2024-01-01", "YYYY-MM-DD").has_value());
 }
 
 // -----------------------------------------------------------------------------

@@ -73,6 +73,9 @@ std::optional<SysTicks> parse_datetime(std::string_view s, std::string_view patt
     std::istringstream ss{std::string(s)};
     ss >> std::chrono::parse(*chrono_fmt, tp);
     if (ss.fail()) return std::nullopt;
+    // Reject trailing content: a datetime that merely *starts* valid is not
+    // valid. peek() forces EOF detection if parse consumed the whole input.
+    if (ss.peek() != std::istringstream::traits_type::eof()) return std::nullopt;
     return tp;
 }
 
