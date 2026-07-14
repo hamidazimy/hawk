@@ -577,10 +577,15 @@ CommandResult Session::execute_impl(const DistinctCommand& cmd) {
             }
         );
     } else {
-        // Sort by count
+        // Sort by count. Ties break on value ascending — a fixed direction
+        // independent of the primary sort — so output is reproducible across
+        // runs and platforms (the frequency map is unordered).
         std::stable_sort(entries.begin(), entries.end(),
             [&](const DistinctEntry& a, const DistinctEntry& b) {
-                return cmd.sort_desc ? a.count < b.count : a.count > b.count;
+                if (a.count != b.count) {
+                    return cmd.sort_desc ? a.count < b.count : a.count > b.count;
+                }
+                return a.value < b.value;
             }
         );
     }

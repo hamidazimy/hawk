@@ -5,9 +5,9 @@
 // handling, and interaction with a prior filter.
 //
 // Ordering note: entries are stable_sorted. When sorting by count, ties are
-// broken by frequency-map iteration order (unspecified), so the tests that pin
-// exact order use either a column whose counts are all distinct (category) or a
-// value-sort (deterministic for distinct values).
+// broken by value ascending (plain std::string comparison) — a fixed direction
+// independent of the primary sort — so output is reproducible across runs and
+// platforms even though the underlying frequency map is unordered.
 #include <doctest/doctest.h>
 
 #include "support/session_fixture.hpp"
@@ -81,6 +81,37 @@ TEST_CASE("DistinctCommand on an Integer column sorts values numerically, not le
     CHECK(values(d) == std::vector<std::string>{"5", "10", "15", "20", "25", "30", "35", "40", "45", "50"});
     CHECK(d.entries.front().value == "5");
     CHECK(d.entries.front().count == 2u);
+}
+
+// -----------------------------------------------------------------------------
+// Integer column — count-sort tiebreak (deterministic ordering)
+// -----------------------------------------------------------------------------
+
+TEST_CASE("DistinctCommand count-sort breaks ties by value ascending, deterministically") {
+    // count column frequencies: "10"=5, "15"=2, "5"=2, "20".."50" (7 values)=1 each.
+    // Note "15" < "5" lexicographically — that is the deterministic contract.
+    auto s = make_session("basic.csv");
+
+    SUBCASE("default: count descending, ties broken value ascending") {
+        auto r = s->execute(DistinctCommand{"count", /*sort_by_value=*/false, /*sort_desc=*/false});
+        const auto& d = payload_as<DistinctResult>(r);
+        CHECK(values(d) == std::vector<std::string>{
+            "10", "15", "5", "20", "25", "30", "35", "40", "45", "50"
+        });
+        CHECK(counts(d) == std::vector<RecordCount>{
+            5u, 2u, 2u, 1u, 1u, 1u, 1u, 1u, 1u, 1u
+        });
+    }
+    SUBCASE("sort_desc: count ascending (current --desc semantics), ties still broken value ascending") {
+        auto r = s->execute(DistinctCommand{"count", /*sort_by_value=*/false, /*sort_desc=*/true});
+        const auto& d = payload_as<DistinctResult>(r);
+        CHECK(values(d) == std::vector<std::string>{
+            "20", "25", "30", "35", "40", "45", "50", "15", "5", "10"
+        });
+        CHECK(counts(d) == std::vector<RecordCount>{
+            1u, 1u, 1u, 1u, 1u, 1u, 1u, 2u, 2u, 5u
+        });
+    }
 }
 
 // -----------------------------------------------------------------------------
