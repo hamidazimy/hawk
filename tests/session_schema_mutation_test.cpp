@@ -71,15 +71,13 @@ TEST_CASE("SetColumnTypeCommand to DateTime without a pattern errors") {
     CHECK(r.error->find("pattern") != std::string::npos);
 }
 
-TEST_CASE("SetColumnTypeCommand to DateTime with an invalid pattern is accepted at set time") {
-    // The command does not validate the pattern; the error only surfaces later,
-    // when a datetime operation tries to use it. See the report / KNOWN_ISSUES.
+TEST_CASE("SetColumnTypeCommand rejects an invalid datetime pattern at set time") {
     auto s = make_session("basic.csv");
-    auto set = s->execute(SetColumnTypeCommand{"count", ColumnType::DateTime, std::string("garbage-pattern")});
-    CHECK_FALSE(set.error.has_value());               // accepted here...
-    CHECK(type_of(*s, "count") == ColumnType::DateTime);
-    auto filt_r = s->execute(filt("count", FilterOp::GT, "2024-01-01 00:00:00"));
-    CHECK(filt_r.error.has_value());                  // ...and only fails at filter time
+    auto set = s->execute(SetColumnTypeCommand{"count", ColumnType::DateTime,
+                                               std::string("garbage-pattern")});
+    REQUIRE(set.error.has_value());
+    CHECK(set.error->find("garbage-pattern") != std::string::npos);
+    CHECK(type_of(*s, "count") == ColumnType::Integer);   // unchanged
 }
 
 TEST_CASE("SetColumnTypeCommand with an unknown column errors") {

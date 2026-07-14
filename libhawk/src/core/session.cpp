@@ -314,10 +314,15 @@ CommandResult Session::execute_impl(const SetColumnTypeCommand& cmd) {
         ));
     }
 
-    if (cmd.type == ColumnType::DateTime && !cmd.datetime_pattern.has_value()) {
-        return CommandResult::err(
-            "Setting a column to datetime requires a pattern."
-        );
+    if (cmd.type == ColumnType::DateTime) {
+        if (!cmd.datetime_pattern.has_value()) {
+            return CommandResult::err(
+                "Setting a column to datetime requires a pattern."
+            );
+        }
+        if (auto err = utils::validate_datetime_pattern(*cmd.datetime_pattern)) {
+            return CommandResult::err(*err);
+        }
     }
 
     // NOTE: This does not invalidate the current view. Any existing filtered
