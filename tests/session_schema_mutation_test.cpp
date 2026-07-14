@@ -117,13 +117,35 @@ TEST_CASE("SetColumnNameCommand renames a column so downstream commands use the 
     CHECK(payload_as<FilterResult>(s->execute(filt("hits", FilterOp::GT, "10"))).matched == 9u);
 }
 
-TEST_CASE("SetColumnNameCommand allows renaming to an existing name (duplicate names)") {
-    // No uniqueness check: after this, two columns are named "id"; lookups return
-    // the lowest index. Documents current behaviour.
+TEST_CASE("SetColumnNameCommand rejects renaming to an existing column's name") {
     auto s = make_session("basic.csv");
     auto r = s->execute(SetColumnNameCommand{"count", "id"});
+    REQUIRE(r.error.has_value());
+    CHECK(r.error->find("id") != std::string::npos);
+    // Schema unchanged: both original names still resolve.
+    CHECK(column_index(*s, "count") == 3u);
+    CHECK(column_index(*s, "id") == 1u);
+}
+
+TEST_CASE("SetColumnNameCommand renaming a column to its own current name is a no-op") {
+    auto s = make_session("basic.csv");
+    auto r = s->execute(SetColumnNameCommand{"count", "count"});
     CHECK_FALSE(r.error.has_value());
-    CHECK(column_index(*s, "id") == 1u);   // original id column still wins
+    CHECK(column_index(*s, "count") == 3u);
+}
+
+TEST_CASE("SetColumnNameCommand rename conflict respects session case sensitivity") {
+    // Case-insensitive session: "ID" collides with the existing "id" column.
+    auto ci = make_session("basic.csv", /*case_sensitive=*/false);
+    auto r1 = ci->execute(SetColumnNameCommand{"count", "ID"});
+    REQUIRE(r1.error.has_value());
+    CHECK(r1.error->find("ID") != std::string::npos);
+
+    // Case-sensitive session: "ID" does not collide with "id", so it succeeds.
+    auto cs = make_session("basic.csv", /*case_sensitive=*/true);
+    auto r2 = cs->execute(SetColumnNameCommand{"count", "ID"});
+    CHECK_FALSE(r2.error.has_value());
+    CHECK(column_index(*cs, "ID") == 3u);
 }
 
 TEST_CASE("SetColumnNameCommand with an unknown source column errors") {

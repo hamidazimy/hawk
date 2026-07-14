@@ -293,6 +293,14 @@ CommandResult Session::execute_impl(const SetColumnNameCommand& cmd) {
         ));
     }
 
+    if (auto existing = find_column(cmd.new_name);
+        existing && *existing != *col_idx) {
+        return CommandResult::err(std::format(
+            "Cannot rename '{}' to '{}': a column named '{}' already exists",
+            cmd.old_name, cmd.new_name, cmd.new_name
+        ));
+    }
+
     schema_.set_column_name(*col_idx, cmd.new_name);
     return CommandResult::ok();
 }
