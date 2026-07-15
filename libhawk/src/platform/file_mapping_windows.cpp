@@ -28,6 +28,9 @@ void FileMapping::open(const std::string& path) {
 
     size_ = static_cast<std::size_t>(size.QuadPart);
 
+    if (size_ == 0)
+        throw std::runtime_error("File is empty (0 bytes)");
+
     mapping_ = CreateFileMappingA(
         file_,
         nullptr,

@@ -108,6 +108,16 @@ TEST_CASE("CountCommand on a header-only file is 0") {
     CHECK(payload_as<CountResult>(s->execute(CountCommand{})).count == 0u);
 }
 
+TEST_CASE("SessionBuilder::open on a zero-byte file throws a clear error") {
+    const std::string path = std::string(HAWK_TEST_FIXTURE_DIR) + "/zero_byte.csv";
+    CHECK_THROWS_AS(SessionBuilder::open(path), std::runtime_error);
+    try {
+        SessionBuilder::open(path);
+    } catch (const std::runtime_error& e) {
+        CHECK(std::string(e.what()).find("empty") != std::string::npos);
+    }
+}
+
 // -----------------------------------------------------------------------------
 // RecordsCommand
 // -----------------------------------------------------------------------------

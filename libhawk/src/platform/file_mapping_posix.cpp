@@ -23,6 +23,9 @@ void FileMapping::open(const std::string& path) {
 
     size_ = static_cast<std::size_t>(st.st_size);
 
+    if (size_ == 0)
+        throw std::runtime_error("File is empty (0 bytes)");
+
     data_ = static_cast<const char*>(
         mmap(nullptr, size_, PROT_READ, MAP_PRIVATE, fd_, 0));
 
