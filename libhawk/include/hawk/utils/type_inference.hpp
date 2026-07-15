@@ -36,6 +36,7 @@ private:
         bool could_be_float    = true;
         bool could_be_datetime = true;
         bool nullable          = false;
+        bool saw_value         = false;  // any non-empty field observed
         std::optional<std::string> datetime_pattern;
         bool (*datetime_pre_screen)(std::string_view) = nullptr;
     };

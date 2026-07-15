@@ -154,10 +154,15 @@ TEST_CASE("TypeInferrer sets nullable based on empty fields") {
         CHECK(s.is_nullable(0) == true);
         CHECK(s.column_type(0) == ColumnType::Integer);
     }
-    SUBCASE("a column of only empty fields is nullable Integer") {
-        // Surprise: empty fields never falsify could_be_integer, and Integer is
-        // the top resolution priority, so an all-empty column resolves to Integer.
+    SUBCASE("a column of only empty fields is nullable String") {
+        // No evidence of any type: "nothing falsified Integer" is not the same
+        // as "Integer was observed". No-evidence columns default to String.
         Schema s = infer(Recs{"", "", ""}, NO_HEADER);
+        CHECK(s.is_nullable(0) == true);
+        CHECK(s.column_type(0) == ColumnType::String);
+    }
+    SUBCASE("a single non-empty integer among empties is enough evidence for Integer") {
+        Schema s = infer(Recs{"", "7", ""}, NO_HEADER);
         CHECK(s.is_nullable(0) == true);
         CHECK(s.column_type(0) == ColumnType::Integer);
     }

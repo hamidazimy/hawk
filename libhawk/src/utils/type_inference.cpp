@@ -121,6 +121,7 @@ std::optional<size_t> try_datetime_index(std::string_view field) {
 // -----------------------------------------------------------------------------
 
 ColumnType TypeInferrer::resolve_type(const ColumnState& state) {
+    if (!state.saw_value)        return ColumnType::String;
     if (state.could_be_integer)  return ColumnType::Integer;
     if (state.could_be_float)    return ColumnType::Float;
     if (state.could_be_datetime) return ColumnType::DateTime;
@@ -172,6 +173,7 @@ Schema TypeInferrer::infer(
                 : std::string_view{};
 
             if (field.empty()) { states[col].nullable = true; continue; }
+            states[col].saw_value = true;
 
             auto idx = try_datetime_index(field);
             if (!idx.has_value()) {
@@ -211,6 +213,7 @@ Schema TypeInferrer::infer(
                 : std::string_view{};
 
             if (field.empty()) { states[col].nullable = true; continue; }
+            states[col].saw_value = true;
 
             if (states[col].could_be_integer && !try_integer(field))
                 states[col].could_be_integer = false;
