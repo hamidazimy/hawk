@@ -370,7 +370,17 @@ CommandResult Session::execute_impl(const DeselectCommand& cmd) {
     if (auto err = resolve_columns(schema_, cmd.columns, indices, config_.case_sensitive)) {
         return CommandResult::err(*err);
     }
-    if (current_projection_.size() - indices.size() < 1) {
+    // The resolved indices may contain duplicates (repeated names on the
+    // command line) and columns not currently projected (drop is a no-op for
+    // those), so size arithmetic on the raw vectors is meaningless — and the
+    // old unsigned subtraction underflowed when indices outnumbered the
+    // projection. Count what would actually remain.
+    const std::unordered_set<ColumnIndex> to_drop(indices.begin(), indices.end());
+    ColumnCount remaining = 0;
+    for (ColumnIndex col : current_projection_.columns()) {
+        if (!to_drop.contains(col)) ++remaining;
+    }
+    if (remaining < 1) {
         return CommandResult::err(
             "Cannot remove all columns — at least one must remain. "
             "Use 'select' to choose a new set."

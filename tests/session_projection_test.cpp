@@ -118,6 +118,37 @@ TEST_CASE("A select -> select+ -> select- chain yields the expected projection")
     CHECK(projection_columns(*s) == Cols{1, 3});
 }
 
+TEST_CASE("DeselectCommand guards against underflow from duplicate or excess indices") {
+    auto s = make_session("basic.csv");
+    SUBCASE("every column requested twice still errors and leaves the projection unchanged") {
+        auto r = s->execute(DeselectCommand{{
+            "timestamp", "timestamp", "id", "id", "category", "category",
+            "count", "count", "value", "value"
+        }});
+        REQUIRE(r.error.has_value());
+        CHECK(r.error->find("at least one") != std::string::npos);
+        CHECK(projection_is_identity(*s));   // unchanged
+    }
+    SUBCASE("one projected column plus one non-projected column also errors") {
+        s->execute(SelectCommand{{"id"}});
+        auto r = s->execute(DeselectCommand{{"id", "count"}});
+        REQUIRE(r.error.has_value());
+        CHECK(r.error->find("at least one") != std::string::npos);
+        CHECK(projection_columns(*s) == Cols{1});   // unchanged
+    }
+    SUBCASE("duplicates that legitimately leave columns behind succeed") {
+        auto r = s->execute(DeselectCommand{{"count", "count", "count"}});
+        CHECK_FALSE(r.error.has_value());
+        CHECK(projection_columns(*s) == Cols{0, 1, 2, 4});   // count (3) dropped
+    }
+    SUBCASE("non-projected columns are droppable no-ops even when they outnumber the projection") {
+        s->execute(SelectCommand{{"id"}});
+        auto r = s->execute(DeselectCommand{{"count", "value"}});
+        CHECK_FALSE(r.error.has_value());
+        CHECK(projection_columns(*s) == Cols{1});   // unchanged, both were no-ops
+    }
+}
+
 // -----------------------------------------------------------------------------
 // Projection interaction with filter / $row / distinct
 // -----------------------------------------------------------------------------
