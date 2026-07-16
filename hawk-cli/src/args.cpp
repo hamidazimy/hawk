@@ -53,14 +53,6 @@ Args parse_args(int argc, char* argv[]) {
             }
 
             // Options with values
-            if (arg == "--script") {
-                if (i + 1 >= argc) {
-                    throw std::invalid_argument("--script requires a filename");
-                }
-                args.script_file = argv[++i];
-                continue;
-            }
-
             if (arg == "--project") {
                 if (i + 1 >= argc) {
                     throw std::invalid_argument("--project requires a filename");
@@ -139,14 +131,12 @@ void print_help(const char* program_name) {
     std::cout << "  --no-header             File has no header row\n";
     std::cout << "\n";
     // std::cout << "Advanced:\n";
-    // std::cout << "  --script FILE           Run commands from script file\n";
     // std::cout << "  --project FILE          Load project file\n";
     // std::cout << "  --output FILE           Write output to file\n";
     // std::cout << "\n";
     std::cout << "Examples:\n";
     std::cout << "  " << program_name << " data.csv\n";
     std::cout << "  " << program_name << " server.log --delimiter '|'\n";
-    std::cout << "  " << program_name << " access.log --script analyze.hawk\n";
     std::cout << "  " << program_name << " file.tsv --delimiter '\\t' --no-header\n";
 }
 

@@ -14,7 +14,6 @@ struct Args {
     std::string log_file;           // Primary log file
 
     // Optional files
-    std::string script_file;        // --script <file>
     std::string project_file;       // --project <file>
     std::string output_file;        // --output <file>
 
