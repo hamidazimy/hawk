@@ -81,7 +81,13 @@ Args parse_args(int argc, char* argv[]) {
                 if (i + 1 >= argc) {
                     throw std::invalid_argument("--delimiter requires a value");
                 }
-                args.delimiter = utils::parse_delimiter(argv[++i]);
+                std::string value = argv[++i];
+                args.delimiter = utils::parse_delimiter(value);
+                if (!args.delimiter.has_value()) {
+                    throw std::invalid_argument(
+                        "Invalid delimiter: '" + value + "'. "
+                        "Use a single character, '\\t'/'tab', or 'space'.");
+                }
                 continue;
             }
 
