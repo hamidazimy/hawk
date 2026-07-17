@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <charconv>
+#include <cmath>
 #include <iomanip>
 #include <iterator>
 #include <sstream>
@@ -110,7 +111,7 @@ bool parse_double(std::string_view s, double& out) {
     const char* end   = s.data() + s.size();
 
     auto result = std::from_chars(begin, end, out);
-    return result.ec == std::errc{} && result.ptr == end;
+    return result.ec == std::errc{} && result.ptr == end && std::isfinite(out);
 }
 
 bool contains(std::string_view haystack, std::string_view needle, bool case_sensitive) {

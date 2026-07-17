@@ -186,16 +186,10 @@ TEST_CASE("parse_double rejects malformed input") {
     CHECK_FALSE(parse_double("3.14 ", v));    // trailing whitespace
     CHECK_FALSE(parse_double("+3.14", v));    // std::from_chars rejects leading '+'
     CHECK_FALSE(parse_double("1e400", v));    // overflow
-}
-
-// NOTE (surprise, flagged for maintainer review — not acted on): std::from_chars
-// for floating point accepts the C-locale spellings "inf" and "nan", so
-// parse_double treats them as valid numbers. This test documents current
-// behaviour; whether Hawk should reject non-finite values is a design question.
-TEST_CASE("parse_double accepts inf and nan (std::from_chars behaviour)") {
-    double v = 0.0;
-    CHECK(parse_double("inf", v));
-    CHECK(parse_double("nan", v));
+    CHECK_FALSE(parse_double("inf", v));      // non-finite: rejected at the source
+    CHECK_FALSE(parse_double("-inf", v));     // non-finite, signed
+    CHECK_FALSE(parse_double("infinity", v)); // non-finite, long spelling
+    CHECK_FALSE(parse_double("nan", v));      // non-finite: NaN
 }
 
 // -----------------------------------------------------------------------------
