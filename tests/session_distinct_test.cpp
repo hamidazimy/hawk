@@ -102,7 +102,7 @@ TEST_CASE("DistinctCommand count-sort breaks ties by value ascending, determinis
             5u, 2u, 2u, 1u, 1u, 1u, 1u, 1u, 1u, 1u
         });
     }
-    SUBCASE("sort_desc: count ascending (current --desc semantics), ties still broken value ascending") {
+    SUBCASE("sort_desc: count ascending (--reverse semantics), ties still broken value ascending") {
         auto r = s->execute(DistinctCommand{"count", /*sort_by_value=*/false, /*sort_desc=*/true});
         const auto& d = payload_as<DistinctResult>(r);
         CHECK(values(d) == std::vector<std::string>{

@@ -502,7 +502,7 @@ CliCommand distinct     (std::string_view args_line) {
     if (args.empty()) {
         throw std::invalid_argument{
             "distinct requires a column name.""\n"
-            "Usage: distinct <column> [-v|--sort-by-value] [-r|--desc]"
+            "Usage: distinct <column> [-v|--sort-by-value] [-r|--reverse]"
         };
     }
 
@@ -513,7 +513,7 @@ CliCommand distinct     (std::string_view args_line) {
     for (const auto& arg : args) {
         if (arg == "--sort-by-value" || arg == "-v") {
             sort_by_value = true;
-        } else if (arg == "--desc" || arg == "-r") {
+        } else if (arg == "--reverse" || arg == "-r") {
             sort_desc = true;
         } else if (column.empty()) {
             column = arg;

@@ -64,7 +64,7 @@ filter <col> <op> <value>                                   Narrow view by predi
 filter+ <col> <op> <value>                                  Expand view (union with full file)
 filter- <col> <op> <value>                                  Shrink view (subtract matching rows)
 sort <col> [--desc|-r]                                      Sort current view
-distinct <col> [-v|--sort-by-value] [-r|--desc]             Show distinct values and counts
+distinct <col> [-v|--sort-by-value] [-r|--reverse]          Show distinct values and counts
 slice [n|-n|i:j|:j|i:|-i:-j]                                Narrow view by row position
 reset [--view|-v] [--proj|-p] [--sort|-s]                   Reset session state
 export <path> [--projected|-p]                              Export current view to file

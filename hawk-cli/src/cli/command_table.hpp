@@ -255,7 +255,7 @@ inline const CommandInfo command_table[] = {
     },
     {
         "distinct",
-        "<column> [--sort-by-value|-v] [--desc|-r]",
+        "<column> [--sort-by-value|-v] [--reverse|-r]",
         "Show distinct values and their counts for a column",
         "\n""Lists all unique values in the specified column within the current view,"
         "\n""along with how many times each appears."
@@ -263,7 +263,7 @@ inline const CommandInfo command_table[] = {
         "\n"
         "\n""By default results are sorted by count descending (most frequent first)."
         "\n""Use -v/--sort-by-value to sort by value instead (type-aware for numeric and datetime columns)."
-        "\n""Use -r/--desc to reverse the sort order."
+        "\n""Use -r/--reverse to reverse the sort order."
         "\n"
         "\n""A warning is shown when the column has high cardinality."
         "\n""Column must be in the current selection — use 'select+' to add it if needed."
@@ -271,7 +271,7 @@ inline const CommandInfo command_table[] = {
         "\n""Examples:"
         "\n""  distinct event_id"
         "\n""  distinct level -v"
-        "\n""  distinct timestamp --sort-by-value --desc",
+        "\n""  distinct timestamp --sort-by-value --reverse",
         {"uniq"},
         parsers::distinct
     },
