@@ -98,6 +98,21 @@ TEST_CASE("SetColumnTypeCommand on the actively-sorted column warns but keeps th
     CHECK(view_column(*s, "count") == counts_before);
 }
 
+TEST_CASE("SetColumnTypeCommand on a filtered view warns without resetting it") {
+    auto s = make_session("basic.csv");
+    REQUIRE_FALSE(s->execute(filt("category", FilterOp::EQ, "auth")).error.has_value());
+    auto rows_before = view_column(*s, "category");
+    REQUIRE(rows_before.size() == 7u);   // 7 'auth' rows in basic.csv
+
+    // "count" was never part of the filter — the warning is intentionally
+    // column-agnostic — Session does not track per-filter column provenance.
+    auto r = s->execute(SetColumnTypeCommand{"count", ColumnType::String});
+    CHECK_FALSE(r.error.has_value());
+    CHECK_FALSE(r.warnings.empty());
+    CHECK(r.warnings.size() == 1u);   // general warning only; no sort was active
+    CHECK(view_column(*s, "category") == rows_before);   // view untouched, not reset
+}
+
 // -----------------------------------------------------------------------------
 // set name
 // -----------------------------------------------------------------------------

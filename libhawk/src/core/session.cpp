@@ -325,26 +325,35 @@ CommandResult Session::execute_impl(const SetColumnTypeCommand& cmd) {
         }
     }
 
-    // NOTE: This does not invalidate the current view. Any existing filtered
-    // view was built under the previous type interpretation. Whether that
-    // produces meaningful results is the analyst's responsibility.
-    // Revisit if view invalidation on type change becomes necessary.
+    // This does not rebuild the current view — a filtered/sliced/sorted view
+    // was built under the previous type interpretation, and rebuilding it is
+    // the analyst's responsibility (via filter/sort/reset). Two independent
+    // warnings surface that fact below: a general one whenever the view is
+    // non-identity (regardless of which column produced it — Session does
+    // not track per-filter column provenance), and a more specific one when
+    // the changed column is the active sort key.
     schema_.set_column_type(*col_idx, cmd.type, cmd.datetime_pattern);
 
-    // TODO: If the sorted column's type changes, the active sort order is now based on
-    // the old type interpretation and may be semantically wrong. Consider invalidating
-    // active_sort_ and warning the analyst when this occurs.
+    auto result = CommandResult::ok();
+
+    if (!current_view_.is_identity()) {
+        result.warnings.push_back(std::format(
+            "Column '{}' type changed while the current view is filtered, "
+            "sliced, or sorted. The view may reflect the previous type "
+            "interpretation. Use 'reset --view' to rebuild it if needed.",
+            cmd.column
+        ));
+    }
+
     if (active_sort_ && active_sort_->col_idx == *col_idx) {
-        auto result = CommandResult::ok();
         result.warnings.push_back(std::format(
             "Column '{}' type changed while an active sort is applied on it. "
             "The sort order may no longer be correct. Use 'sort' to re-apply.",
             cmd.column
         ));
-        return result;
     }
 
-    return CommandResult::ok();
+    return result;
 }
 
 CommandResult Session::execute_impl(const SelectCommand& cmd) {

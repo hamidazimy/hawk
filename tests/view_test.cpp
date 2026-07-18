@@ -62,6 +62,22 @@ TEST_CASE("View constructed from an index vector is a non-identity view") {
     CHECK(to_vec(v) == Idx{5, 2, 8, 1, 3});      // mapping is the vector itself
 }
 
+TEST_CASE("is_identity distinguishes identity from index-vector construction") {
+    View identity_default;
+    View identity_count(5);
+    View non_identity(Idx{5, 2, 8, 1, 3}, 10);
+    CHECK(identity_default.is_identity());
+    CHECK(identity_count.is_identity());
+    CHECK_FALSE(non_identity.is_identity());
+}
+
+TEST_CASE("reset restores is_identity() to true") {
+    View v(Idx{5, 2, 8, 1, 3}, 10);
+    REQUIRE_FALSE(v.is_identity());
+    v.reset();
+    CHECK(v.is_identity());
+}
+
 TEST_CASE("View::identity matches View(total)") {
     View a = View::identity(4);
     View b(4);

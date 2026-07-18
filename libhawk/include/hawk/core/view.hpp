@@ -49,6 +49,10 @@ public:
         return is_identity_ ? total_records_ : indices_.size();
     }
 
+    bool is_identity() const noexcept {
+        return is_identity_;
+    }
+
     // Unchecked, fast.
     // Use at() for bounds-checked access; use operator[] when
     // the caller has already validated i < size().
@@ -76,7 +80,8 @@ public:
     // contain all source records?" is a stronger question than "is this an
     // identity view?" — a fully-populated but sorted view is not an identity
     // view. Callers who need to answer either question must inspect the view's
-    // contents; the is-identity distinction is not exposed publicly.
+    // contents directly, or use is_identity() for the identity question —
+    // size() alone is not a substitute (see above).
 
     template <typename Predicate> View filter(Predicate&& predicate) const {
         std::vector<RecordIndex> result;
