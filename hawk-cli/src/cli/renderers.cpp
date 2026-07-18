@@ -111,7 +111,7 @@ void render_field(
             ctx.sout << field;
             ctx.sout << std::string(width - field.size(), ' ');
         } else {
-            ctx.sout << field.substr(0, width - (has_trailer ? 0 : 1));
+            ctx.sout << hawk::cli::utils::truncate_utf8(field, width - (has_trailer ? 0 : 1));
             ctx.sout << SYM_ELLIPSIS;
         }
         return;
@@ -121,25 +121,31 @@ void render_field(
     std::size_t col = 0;
     bool truncated = false;
 
-    for (std::size_t i = 0; i < field.size(); ++i) {
+    std::size_t i = 0;
+    while (i < field.size()) {
         char c = field[i];
-        if (c == '\r') continue;
+        if (c == '\r') { ++i; continue; }
 
-        if (col == width - 1 && i + 1 < field.size()) {
-            if (has_trailer) ctx.sout.put(c);
+        const std::size_t unit_bytes = (c == '\n' || c == '\t')
+            ? 1
+            : hawk::cli::utils::utf8_codepoint_length(field, i);
+
+        if (col == width - 1 && i + unit_bytes < field.size()) {
+            if (has_trailer) ctx.sout << field.substr(i, unit_bytes);
             truncated = true;
             ++col;
             break;
-        } else if (c == '\n') {
+        }
+
+        if (c == '\n') {
             ctx.sout << SYM_NEXTLINE;
-            ++col;
         } else if (c == '\t') {
             ctx.sout << SYM_TAB;
-            ++col;
         } else {
-            ctx.sout.put(c);
-            ++col;
+            ctx.sout << field.substr(i, unit_bytes);
         }
+        ++col;
+        i += unit_bytes;
     }
 
     if (col < width)
@@ -293,9 +299,10 @@ void render_field_vertical(
             continue;
         }
 
-        ctx.sout.put(c);
+        const std::size_t unit_bytes = hawk::cli::utils::utf8_codepoint_length(field, pos);
+        ctx.sout << field.substr(pos, unit_bytes);
         ++col;
-        ++pos;
+        pos += unit_bytes;
     }
 }
 

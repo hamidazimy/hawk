@@ -1,5 +1,6 @@
 #include "utils.hpp"
 
+#include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstddef>
@@ -72,6 +73,28 @@ std::optional<char> parse_delimiter(const std::string& str) {
 
 std::size_t num_digits(std::uint64_t n) {
     return (std::size_t)std::log10(n) + 1;
+}
+
+std::size_t utf8_codepoint_length(std::string_view str, std::size_t pos) {
+    unsigned char lead = static_cast<unsigned char>(str[pos]);
+    std::size_t len;
+    if ((lead & 0x80) == 0x00)      len = 1;  // 0xxxxxxx — ASCII
+    else if ((lead & 0xE0) == 0xC0) len = 2;  // 110xxxxx
+    else if ((lead & 0xF0) == 0xE0) len = 3;  // 1110xxxx
+    else if ((lead & 0xF8) == 0xF0) len = 4;  // 11110xxx
+    else                             len = 1;  // continuation byte or invalid lead
+
+    return std::min(len, str.size() - pos);
+}
+
+std::string_view truncate_utf8(std::string_view str, std::size_t max_bytes) {
+    std::size_t consumed = 0;
+    while (consumed < str.size()) {
+        std::size_t next = utf8_codepoint_length(str, consumed);
+        if (consumed + next > max_bytes) break;
+        consumed += next;
+    }
+    return str.substr(0, consumed);
 }
 
 } // namespace utils
