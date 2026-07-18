@@ -54,18 +54,6 @@ std::string_view trim(std::string_view str) {
     return std::string_view(start, static_cast<size_t>(end - start));
 }
 
-std::vector<std::string> split(const std::string& str, char delimiter) {
-    std::vector<std::string> tokens;
-    std::string token;
-    std::istringstream tokenStream(str);
-
-    while (std::getline(tokenStream, token, delimiter)) {
-        tokens.push_back(token);
-    }
-
-    return tokens;
-}
-
 std::vector<std::string_view> split(std::string_view str, char delimiter) {
     std::vector<std::string_view> tokens;
     std::size_t start = 0;

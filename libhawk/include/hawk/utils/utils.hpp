@@ -27,11 +27,6 @@ std::string_view trim(std::string_view str);
 /**
  * Split string by delimiter
  */
-std::vector<std::string> split(const std::string& str, char delimiter);
-
-/**
- * Split string by delimiter (string_view version for performance)
- */
 std::vector<std::string_view> split(std::string_view str, char delimiter);
 
 /**
