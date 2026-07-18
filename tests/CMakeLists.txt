@@ -6,6 +6,8 @@ add_executable(hawk-tests
     main.cpp
     smoke.cpp
     utils_test.cpp
+    cli_utils_test.cpp
+    ${CMAKE_SOURCE_DIR}/hawk-cli/src/helpers/utils.cpp
     datetime_parser_test.cpp
     schema_test.cpp
     projection_test.cpp
@@ -38,13 +40,21 @@ target_include_directories(hawk-tests SYSTEM PRIVATE
     ${CMAKE_SOURCE_DIR}/third_party
 )
 
+# cli_utils_test.cpp exercises the self-contained CLI string helpers; only
+# hawk-cli/src/helpers/utils.cpp is compiled in — nothing else from
+# hawk-cli (no console, replxx, or renderer code) is linked.
+target_include_directories(hawk-tests PRIVATE
+    ${CMAKE_SOURCE_DIR}/hawk-cli/src
+)
+
 # Session integration tests read checked-in CSV fixtures. Pass their absolute
 # directory so the tests do not depend on the working directory at run time.
 target_compile_definitions(hawk-tests PRIVATE
     HAWK_TEST_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/fixtures"
 )
 
-# Tests exercise the core engine only; the CLI is a separate, thin layer.
+# Tests exercise the core engine plus one self-contained CLI helper TU
+# (helpers/utils.cpp); the rest of the CLI is a separate, thin layer.
 target_link_libraries(hawk-tests PRIVATE hawk::hawk)
 
 target_compile_features(hawk-tests PRIVATE cxx_std_20)

@@ -1,9 +1,10 @@
 # Testing
 
-Hawk's automated tests live in `tests/` and run on the core engine (`libhawk`)
-via the [doctest](https://github.com/doctest/doctest) framework. doctest is
-vendored as a single header at `third_party/doctest/doctest.h` (no submodule or
-network fetch required).
+Hawk's automated tests live in `tests/` and run on the core engine
+(`libhawk`) — plus one self-contained CLI helper unit (`hawk-cli`'s
+`helpers/utils`) — via the [doctest](https://github.com/doctest/doctest)
+framework. doctest is vendored as a single header at
+`third_party/doctest/doctest.h` (no submodule or network fetch required).
 
 Tests are **opt-in**: the default build does not compile or run them. Enable
 them with the `HAWK_BUILD_TESTS` CMake option (default `OFF`).
@@ -36,6 +37,8 @@ filtering flags:
 The suite currently covers:
 
 - utility helpers (`hawk/utils/utils.hpp`)
+- CLI string helpers (`hawk-cli/src/helpers/utils.hpp` — currently the two
+  UTF-8 truncation primitives; compiled into the suite as a standalone TU)
 - datetime parsing (`hawk/utils/datetime_parser.hpp`)
 - `Schema`
 - `Projection`
