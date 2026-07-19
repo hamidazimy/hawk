@@ -333,7 +333,7 @@ CliCommand peek         (std::string_view args_line) {
     DisplayMode mode = DisplayMode::Vertical;
     std::optional<std::string_view> range_arg;
     auto args = utils::tokenize(args_line);
-    for (auto arg : args) {
+    for (const auto& arg : args) {
         if (arg == "--untruncated" || arg == "-u") {
             mode = DisplayMode::VerticalUntruncated;
         } else if (range_arg) {
