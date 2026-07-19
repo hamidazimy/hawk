@@ -1,5 +1,5 @@
 # ------------------------------------------------------------------------------
-# hawk-tests - doctest-based test suite for libhawk
+# hawk-tests - doctest-based test suite (libhawk + self-contained CLI helpers)
 # ------------------------------------------------------------------------------
 
 add_executable(hawk-tests

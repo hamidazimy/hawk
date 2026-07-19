@@ -26,11 +26,49 @@ ctest --test-dir build --output-on-failure
 ```
 
 You can also run the executable directly for doctest's native output and
-filtering flags:
+filtering flags — `--test-case` takes comma-separated wildcards and is the
+fastest way to iterate on one area:
 
 ```bash
 ./build/bin/hawk-tests
+./build/bin/hawk-tests --test-case='*filter*,*Filter*'
 ```
+
+## Verifying CLI-side changes
+
+The suite covers `libhawk` plus one self-contained CLI helper TU — it does
+**not** exercise the CLI's parsers, argument handling, or renderers. Changes
+there are verified behaviourally by piping commands into the real binary:
+
+```bash
+printf 'filter category == auth\ncount\nexit\n' | \
+    ./build/bin/hawk tests/fixtures/basic.csv --no-confirm
+```
+
+Note that in a piped (non-TTY) context the detected terminal width falls
+back to 80 columns, color is disabled, and the inference spinner suppresses
+itself. For renderer changes where byte-exact output matters (e.g. UTF-8
+handling), redirect to a file and inspect with `hexdump`/`xxd` rather than
+eyeballing a terminal.
+
+## Fixtures
+
+Session integration tests read checked-in CSVs from `tests/fixtures/`
+(absolute path injected via the `HAWK_TEST_FIXTURE_DIR` compile
+definition). Notable entries:
+
+- `basic.csv` — the primary fixture: 16 data rows, columns
+  `timestamp, id, category, count, value` (indices 0–4). `category` holds
+  7×`auth`, 5×`net`, 4×`sys`; `count` has deliberately tied frequencies
+  (used by the distinct tie-break tests) — recount before relying on exact
+  numbers in new assertions.
+- `empty.csv` — **header-only** (8 bytes), not zero-byte.
+- `zero_byte.csv` — the genuinely 0-byte fixture (empty-file error tests).
+
+Test helpers live in `tests/support/session_fixture.hpp`:
+`make_session(fixture, case_sensitive)`, `payload_as<T>(result)`,
+`column_index`, `view_column`, and the projection helpers
+(`projection_columns`, `projection_is_identity`).
 
 ## Status
 
