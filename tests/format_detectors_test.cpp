@@ -75,11 +75,12 @@ TEST_CASE("detect_delimiter picks the highest-scoring candidate when delimiters 
     CHECK(d == ',');
 }
 
-TEST_CASE("detect_delimiter is NOT quote-aware: delimiters inside quotes are counted") {
-    // "a,b,c,d" is one quoted field, but the four interior commas are still
-    // counted, so comma wins overwhelmingly. Documents a real limitation.
+TEST_CASE("detect_delimiter is quote-aware: delimiters inside quotes are not counted") {
+    // Each row is one quoted field full of ';' followed by two ','-separated
+    // fields. Byte-counting sees 3 ';' vs 2 ',' and would pick ';'; the
+    // quote-aware count sees 0 unquoted ';' and 2 unquoted ',', so ',' wins.
     char d = 0;
-    REQUIRE(detect_delimiter(Samples{"\"a,b,c,d\",x", "\"e,f,g,h\",y"}, d));
+    REQUIRE(detect_delimiter(Samples{"\"a;b;c;d\",e,f", "\"x;y;z;w\",g,h"}, d));
     CHECK(d == ',');
 }
 
@@ -141,6 +142,14 @@ TEST_CASE("detect_column_count counts the fields of the first sample") {
         REQUIRE(detect_column_count(Samples{""}, ',', c));
         CHECK(c == 1u);
     }
+    SUBCASE("a delimiter inside a quoted field is not a field boundary") {
+        REQUIRE(detect_column_count(Samples{"a,\"b,c\",d"}, ',', c));
+        CHECK(c == 3u);
+    }
+    SUBCASE("escaped quotes inside a quoted field are handled") {
+        REQUIRE(detect_column_count(Samples{"a,\"he said \"\"hi\"\"\",d"}, ',', c));
+        CHECK(c == 3u);
+    }
 }
 
 TEST_CASE("detect_column_count returns false and leaves the out-param untouched on empty samples") {
@@ -186,6 +195,14 @@ TEST_CASE("detect_header decides from the first row alone, even with a single sa
         REQUIRE(detect_header(Samples{"10,20"}, ',', h));
         CHECK(h == false);
     }
+}
+
+TEST_CASE("detect_header treats a comma inside a quoted field as one field, not a numeric boundary") {
+    // Byte-splitting "col,2,x",label yields a bare "2" fragment and misreads
+    // the row as data; quote-aware splitting keeps "col,2,x" whole -> header.
+    bool h = false;
+    REQUIRE(detect_header(Samples{"\"col,2,x\",label", "row,val,here"}, ',', h));
+    CHECK(h == true);
 }
 
 TEST_CASE("detect_header treats a row of only empty fields as a header") {

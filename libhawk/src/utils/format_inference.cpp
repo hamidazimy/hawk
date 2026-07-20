@@ -1,6 +1,7 @@
 #include <hawk/utils/format_inference.hpp>
 
 #include <hawk/core/types.hpp>
+#include <hawk/core/record_parser.hpp>
 #include <hawk/core/record_source.hpp>
 #include <hawk/utils/utils.hpp>
 
@@ -27,10 +28,11 @@ bool detect_delimiter(
     double best_score = -1.0;
 
     for (char delim : candidates) {
+        const CSVRecordParser parser{delim};
         std::vector<size_t> counts;
         counts.reserve(samples.size());
         for (const auto& line : samples)
-            counts.push_back(std::count(line.begin(), line.end(), delim));
+            counts.push_back(parser.parse_record(line).size() - 1);
 
         double mean = std::accumulate(counts.begin(), counts.end(), 0.0) / counts.size();
         if (mean < 1.0) continue;
@@ -72,7 +74,7 @@ bool detect_column_count(
     ColumnCount& out_column_count
 ) {
     if (samples.empty()) return false;
-    out_column_count = hawk::utils::split(samples.front(), delimiter).size();
+    out_column_count = CSVRecordParser{delimiter}.parse_record(samples.front()).size();
     return true;
 }
 
@@ -82,7 +84,7 @@ bool detect_header(
     bool& out_has_header
 ) {
     if (samples.empty()) return false;
-    auto first_fields = hawk::utils::split(samples.front(), delimiter);
+    auto first_fields = CSVRecordParser{delimiter}.parse_record(samples.front());
     if (first_fields.empty()) return false;
     for (const auto& field : first_fields) {
         auto trimmed = hawk::utils::trim(field);

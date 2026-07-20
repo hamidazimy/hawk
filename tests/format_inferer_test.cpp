@@ -65,6 +65,7 @@ TEST_CASE("FormatInferer sets uses_quotes and quote_char when double-quotes appe
     auto r = FormatInferer{}.infer(src);
     CHECK(r.uses_quotes == true);
     CHECK(r.quote_char == '"');
+    CHECK(r.column_count == 3u);
 }
 
 TEST_CASE("FormatInferer leaves uses_quotes false when there are no quotes") {
