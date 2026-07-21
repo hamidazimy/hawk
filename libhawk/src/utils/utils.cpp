@@ -50,7 +50,7 @@ std::string_view trim(std::string_view str) {
         return std::string_view{};
     }
 
-    return std::string_view(start, static_cast<size_t>(end - start));
+    return str.substr(start - str.begin(), end - start);
 }
 
 bool ends_with(std::string_view str, std::string_view suffix) {
