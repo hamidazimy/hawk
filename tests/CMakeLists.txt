@@ -40,6 +40,18 @@ target_include_directories(hawk-tests SYSTEM PRIVATE
     ${CMAKE_SOURCE_DIR}/third_party
 )
 
+# doctest.h only forward-declares std::ostream (via <iosfwd>). On MSVC's STL,
+# <string_view>'s operator<</operator>> definitions are non-dependent on
+# basic_ostream being complete, so any TU that includes doctest.h before a
+# header pulling in <string_view> (e.g. hawk/utils/utils.hpp) fails with
+# "use of undefined type 'std::basic_ostream'" inside <__msvc_string_view.hpp>.
+# Force-include <iostream> first to guarantee a complete definition is in
+# scope before <string_view> is ever seen. GCC/Clang/libstdc++ do not have
+# this ordering sensitivity.
+target_compile_options(hawk-tests PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/FIiostream>
+)
+
 # cli_utils_test.cpp exercises the self-contained CLI string helpers; only
 # hawk-cli/src/helpers/utils.cpp is compiled in — nothing else from
 # hawk-cli (no console, replxx, or renderer code) is linked.
