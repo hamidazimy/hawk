@@ -98,7 +98,7 @@ libhawk/
 ├── include/hawk/
 │   ├── hawk.hpp            # Main entry (forwards to core/)
 │   ├── utils/
-│   │   ├── utils.hpp               # String helpers (trim/split/tokenize/parse_int/parse_double/
+│   │   ├── utils.hpp               # String helpers (trim/tokenize/parse_int/parse_double/
 │   │   │                           #  contains/compare_strings/to_lower)
 │   │   ├── format_inference.hpp    # Delimiter/header detection + diagnostics
 │   │   ├── type_inference.hpp      # Two-phase column type inference (sample-based datetime

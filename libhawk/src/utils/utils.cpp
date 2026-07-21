@@ -11,7 +11,6 @@
 #include <string>
 #include <string_view>
 #include <system_error>
-#include <vector>
 
 namespace hawk::utils {
 
@@ -52,21 +51,6 @@ std::string_view trim(std::string_view str) {
     }
 
     return std::string_view(start, static_cast<size_t>(end - start));
-}
-
-std::vector<std::string_view> split(std::string_view str, char delimiter) {
-    std::vector<std::string_view> tokens;
-    std::size_t start = 0;
-    std::size_t end = str.find(delimiter);
-
-    while (end != std::string_view::npos) {
-        tokens.push_back(str.substr(start, end - start));
-        start = end + 1;
-        end = str.find(delimiter, start);
-    }
-
-    tokens.push_back(str.substr(start));
-    return tokens;
 }
 
 bool ends_with(std::string_view str, std::string_view suffix) {

@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
-#include <vector>
 
 namespace hawk::utils {
 
@@ -23,11 +22,6 @@ std::string trim(const std::string& str);
  * Trim whitespace from both ends of a string_view
  */
 std::string_view trim(std::string_view str);
-
-/**
- * Split string by delimiter
- */
-std::vector<std::string_view> split(std::string_view str, char delimiter);
 
 /**
  * Check if string ends with suffix

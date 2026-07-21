@@ -45,42 +45,6 @@ TEST_CASE("trim string_view overload matches string overload") {
 }
 
 // -----------------------------------------------------------------------------
-// split
-// -----------------------------------------------------------------------------
-
-TEST_CASE("split(std::string_view, char) tokenizes on delimiter") {
-    SUBCASE("standard case") {
-        auto r = split(std::string_view("a,b,c"), ',');
-        CHECK(r == std::vector<std::string_view>{"a", "b", "c"});
-    }
-    SUBCASE("single element, no delimiter present") {
-        auto r = split(std::string_view("abc"), ',');
-        CHECK(r == std::vector<std::string_view>{"abc"});
-    }
-    SUBCASE("empty fields between delimiters are preserved") {
-        auto r = split(std::string_view("a,,b"), ',');
-        CHECK(r == std::vector<std::string_view>{"a", "", "b"});
-    }
-    SUBCASE("leading delimiter yields empty first field") {
-        auto r = split(std::string_view(",a"), ',');
-        CHECK(r == std::vector<std::string_view>{"", "a"});
-    }
-    // A trailing delimiter yields a trailing empty field, and an empty
-    // input yields a single empty token (not an empty vector) — both
-    // follow from the find-based implementation always emitting one more
-    // token than the number of delimiters seen.
-    SUBCASE("trailing delimiter yields a trailing empty field") {
-        auto r = split(std::string_view("a,b,"), ',');
-        CHECK(r == std::vector<std::string_view>{"a", "b", ""});
-    }
-    SUBCASE("empty input yields a single empty token") {
-        auto r = split(std::string_view(""), ',');
-        REQUIRE(r.size() == 1);
-        CHECK(r[0].empty());
-    }
-}
-
-// -----------------------------------------------------------------------------
 // ends_with
 // -----------------------------------------------------------------------------
 
