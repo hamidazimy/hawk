@@ -61,14 +61,6 @@ Args parse_args(int argc, char* argv[]) {
                 continue;
             }
 
-            if (arg == "--output") {
-                if (i + 1 >= argc) {
-                    throw std::invalid_argument("--output requires a filename");
-                }
-                args.output_file = argv[++i];
-                continue;
-            }
-
             if (arg == "--delimiter") {
                 if (i + 1 >= argc) {
                     throw std::invalid_argument("--delimiter requires a value");
@@ -132,7 +124,6 @@ void print_help(const char* program_name) {
     std::cout << "\n";
     // std::cout << "Advanced:\n";
     // std::cout << "  --project FILE          Load project file\n";
-    // std::cout << "  --output FILE           Write output to file\n";
     // std::cout << "\n";
     std::cout << "Examples:\n";
     std::cout << "  " << program_name << " data.csv\n";

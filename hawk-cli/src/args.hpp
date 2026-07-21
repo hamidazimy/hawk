@@ -15,7 +15,6 @@ struct Args {
 
     // Optional files
     std::string project_file;       // --project <file>
-    std::string output_file;        // --output <file>
 
     // File analysis overrides (optional - will override auto-detection)
     std::optional<char> delimiter;       // --delimiter ',' or '\t'
