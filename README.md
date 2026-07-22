@@ -4,7 +4,7 @@
 
 Hawk is a C++20 tool for exploring large log files without spinning up a SIEM, writing a script, or loading a notebook. It is designed for analysts who treat logs as evidence: deterministic operations, transparent inference, reproducible sessions, and no silent rewriting of source data.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![CI](https://github.com/hamidazimy/hawk/actions/workflows/ci.yml/badge.svg)](https://github.com/hamidazimy/hawk/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ---
 
