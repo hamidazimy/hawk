@@ -6,6 +6,54 @@ All notable changes to Hawk are documented here. The format is based on [Keep a 
 
 ---
 
+## [0.7.0] — 2026-07-21
+
+The first release with a real test suite. Two sessions of systematic auditing turned up a batch of correctness bugs across parsing, inference, filtering, and rendering — all fixed here — and the codebase gained doctest-based coverage of libhawk, its first user-facing documentation, and native Windows build support. Three dead or misleadingly-named CLI flags were removed or renamed, making this the first release since v0.6.0 with breaking CLI changes.
+
+### Breaking changes
+
+- `distinct --desc` is renamed to `distinct --reverse`. The old spelling is no longer accepted; saved `.hawk` scripts using `--desc` must be updated.
+- `--script <file>` is removed. It was parsed but never executed — a silent no-op that the help text actively advertised with an example. It is now rejected as an unknown option. Script mode remains planned work; the flag will return when it does something.
+- `--output <file>` is removed. Like `--script` it was parsed and then silently ignored. It is now rejected as an unknown option. Writing results to a file is already covered by `export`.
+
+### Changed
+
+- `peek N` now shows exactly row N. The bare-index form was previously interpreted as a start-open range and printed rows 1–N, contradicting the documented `peek i — row i in current view`. `peek -N` likewise now shows exactly the Nth row from the end rather than the last N rows.
+- An invalid `--delimiter` value is now a startup error that names the value and the accepted spellings, and exits 1. Previously the flag was silently discarded and the delimiter inferred instead, replacing an explicitly stated assumption with a heuristic — invisibly so under `--no-confirm`.
+- A column whose sampled values are all empty now infers as `String` rather than `Integer`. Empty fields no longer count as evidence of a numeric type, so "no evidence of any type" yields the honest default instead of implying numeric data.
+- `distinct` output is now deterministic when two values share a count. Count-mode ties break on value ascending, so repeated runs produce byte-identical output; previously tied entries could reorder between runs, builds, and platforms.
+- `set type` now warns whenever it changes a column while the view is non-identity (filtered or sliced), not only when the changed column is the active sort key. The view is deliberately left intact — the warning flags that its membership was computed under the previous type's semantics.
+- Non-finite floating-point literals are rejected. `filter <float-column> > inf` (and `-inf`, `infinity`, `nan`) now fails with the usual "cannot be parsed as float" error instead of silently constructing a comparison against a non-finite value, and such values in data count as unparseable rather than flowing into filter comparisons and sort keys.
+- Builds default to `Release` when `CMAKE_BUILD_TYPE` is not set.
+
+### Fixed
+
+- Opening a 0-byte file now reports `File is empty (0 bytes)` instead of the opaque `mmap failed`. Both the POSIX and Windows mapping paths guard the empty case before attempting to map.
+- Delimiter, column-count, and header detection are now quote-aware. A legitimately quoted field containing the delimiter — `a,"b,c",d` — is no longer treated as a field boundary, so that row infers as 3 columns rather than 4, and a quoted field full of some other delimiter can no longer skew delimiter choice. Inference now reuses the same quote-aware parser the record layer already used, so the whole pipeline agrees on what a field is.
+- Field text is truncated and wrapped on UTF-8 codepoint boundaries. Multi-byte characters in long values are no longer split mid-sequence into garbled output, either by the horizontal renderer's truncation or by `--untruncated` wrapping.
+- `parse_datetime` rejects trailing content after an otherwise-complete match. A value like `2024-01-01 extra` no longer parses as valid under `YYYY-MM-DD`, so datetime filters no longer match on malformed values that merely start valid.
+- `+tz` patterns accept both compact (`-0500`) and colon-separated (`-05:00`) UTC offset spellings, producing the same instant for either.
+- Renaming a column to a name another column already holds is rejected. Previously it silently succeeded, leaving two columns sharing a name with subsequent lookups resolving to whichever came first — the wrong column for at least one of them.
+- `set type <column> DateTime <pattern>` validates the pattern and rejects an invalid one at set time, instead of accepting it and failing later in an unrelated command with an error disconnected from the mistake.
+- `select-` can no longer empty the projection. Repeating a column name inflated the count of columns to drop past the projection's size, underflowing the guard that keeps at least one column; the guard now counts unique remaining columns.
+- `peek <range> -u` — range before the flag, the order shown in the documentation — no longer fails with a spurious bound error. The parser stored a view into a destroyed loop-local string, making both argument orders undefined behaviour.
+
+### Added
+
+- A doctest-based test suite covering libhawk broadly: utils, datetime parsing, schema, projection, range resolution, filter, view, type and format inference, and Session integration, plus targeted coverage of the CLI's UTF-8 truncation helpers. Build with `-DHAWK_BUILD_TESTS=ON` and run via `ctest`. Every fix in this release is pinned by tests.
+- User-facing documentation: `README.md`, this changelog, `CONTRIBUTING.md`, and a forensic walkthrough.
+- `resolve_range` / `ResolvedRange` and `prepare_filter` / `resolve_columns` are now part of libhawk's public surface, so range resolution and filter preparation can be tested and reused directly rather than being reimplemented per command.
+- Hawk now builds and runs natively on Windows with MSVC, alongside the pre-existing MinGW cross-compile path. Two portability defects surfaced and were fixed: `trim(std::string_view)` built its result in a way that only compiles where `string_view::iterator` is a raw pointer, and the test target needs `<iostream>` force-included on MSVC because doctest only forward-declares `std::ostream`. Neither changes behaviour on any platform.
+
+### Removed
+
+- The `split` string utility, both overloads. Its two overloads had divergent edge-case semantics, and its last production callers moved to the quote-aware record parser — a byte-based splitter is the wrong tool in a pipeline that is quote-aware end to end.
+- The unused `TEST_BUILD` compile flag.
+
+### Notes
+
+- One known divergence on native MSVC builds: Microsoft's STL implementation of `std::chrono::parse` does not apply the day-of-month range check libstdc++ applies, so `parse_datetime` accepts impossible dates such as `2023-02-29` or `2024-04-31` there while rejecting them on Linux. Three assertions in the datetime test suite cover this and currently fail on MSVC only. Native Windows support is new in this release and this is its one known correctness gap.
+
 ## [0.6.9] — 2026-06-27
 
 ### Added
