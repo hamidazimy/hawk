@@ -15,8 +15,16 @@ jobs:
         with:
           submodules: recursive
 
+      # ubuntu-latest (Ubuntu 24.04) defaults to GCC 13, whose libstdc++ does
+      # not implement std::chrono::parse - added in GCC 14 - which
+      # libhawk/src/utils/datetime_parser.cpp uses unconditionally. GCC 14 is
+      # already preinstalled on the runner image, so it is selected explicitly
+      # rather than installed. Both C and CXX are set because the vendored
+      # replxx subproject enables C.
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DHAWK_BUILD_TESTS=ON
+        run: >
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DHAWK_BUILD_TESTS=ON
+          -DCMAKE_C_COMPILER=gcc-14 -DCMAKE_CXX_COMPILER=g++-14
 
       - name: Build
         run: cmake --build build -j

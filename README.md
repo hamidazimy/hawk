@@ -98,7 +98,7 @@ That's the breach. The full walkthrough — including post-compromise pivot, sec
 
 **Prerequisites**
 
-- C++20 compiler: GCC 12+, Clang 16+, or MSVC 2022
+- C++20 compiler: GCC 14+ (earlier libstdc++ lacks `std::chrono::parse`), Clang 16+, or MSVC 2022
 - CMake 3.15+
 
 **Linux / macOS**
