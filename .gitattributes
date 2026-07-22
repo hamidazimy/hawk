@@ -1,0 +1,15 @@
+# Normalize line endings so every working tree — on every platform — matches
+# what is stored in the repository. Without this, git falls back to each
+# client's core.autocrlf, and a Windows checkout rewrites LF files to CRLF.
+* text=auto eol=lf
+
+# Test fixtures and the tracked sample logs are DATA: their exact bytes,
+# line endings included, are what the tests and the walkthrough exercise.
+# Never convert them in either direction. This also keeps it possible to add
+# a deliberately-CRLF fixture later without it being silently normalized.
+tests/fixtures/** -text
+sample_logs/** -text
+
+# Binary assets: these contain CR bytes as payload and must never be touched.
+*.png binary
+*.gif binary
