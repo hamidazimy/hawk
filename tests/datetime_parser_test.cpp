@@ -1,17 +1,18 @@
 // Tests for hawk::utils datetime parsing —
 // libhawk/include/hawk/utils/datetime_parser.hpp.
 //
-// parse_datetime translates a user-facing pattern (YYYY MM DD hh mm ss ss.f+ f+
-// Z +tz plus - / . : T space separators) into a std::chrono::parse format and
-// parses into a SysTicks (a sys_time with 100ns precision). validate_datetime_pattern
+// parse_datetime walks a user-facing pattern (YYYY MM DD hh mm ss ss.f+ f+
+// Z +tz plus - / . : T space separators) and the input string positionally,
+// parsing into a SysTicks (a sys_time with 100ns precision). validate_datetime_pattern
 // reports whether a pattern is well-formed.
 //
-// Scope: public API only. One behaviour discovered while writing these tests is
-// worth a maintainer's attention and is called out inline:
+// Scope: public API only. Two behaviours are worth a maintainer's attention
+// and are called out inline:
 //   1. A pattern with no date component (time-only) never parses, because a
 //      sys_time cannot be formed from a time-of-day alone. Documented below.
-// Trailing content after a full match is rejected (full-consumption check via
-// ss.peek()); see the "rejects trailing content" test below.
+//   2. Trailing content after a full match is rejected (a full-consumption
+//      check runs once all pattern tokens are matched); see the "rejects
+//      trailing content" test below.
 #include <doctest/doctest.h>
 
 #include <hawk/utils/datetime_parser.hpp>
@@ -127,9 +128,7 @@ TEST_CASE("parse_datetime applies timezone offsets") {
 }
 
 TEST_CASE("parse_datetime accepts both compact and colon-separated UTC offsets") {
-    // %z fully consumes only compact offsets (-0500); %Ez only colon/bare
-    // forms (-05:00, -05). parse_datetime retries with %Ez so the +tz token
-    // covers every ISO 8601 offset spelling, at the same instant.
+    // Both spellings must produce the identical instant.
     const std::string_view pat = "YYYY-MM-DD hh:mm:ss+tz";
     auto colon   = parse_datetime("2024-01-01 13:45:30-05:00", pat);
     auto compact = parse_datetime("2024-01-01 13:45:30-0500", pat);
@@ -138,6 +137,9 @@ TEST_CASE("parse_datetime accepts both compact and colon-separated UTC offsets")
     CHECK(*colon == *compact);
     // Trailing content after an offset is still rejected.
     CHECK_FALSE(parse_datetime("2024-01-01 13:45:30-05:00x", pat).has_value());
+    // A missing sign is rejected rather than silently treated as positive —
+    // the old istringstream-based parser did this silently.
+    CHECK_FALSE(parse_datetime("2024-01-01 13:45:300500", pat).has_value());
 }
 
 // -----------------------------------------------------------------------------
@@ -181,6 +183,28 @@ TEST_CASE("parse_datetime handles time-of-day boundaries") {
     }
 }
 
+TEST_CASE("parse_datetime field width rules") {
+    SUBCASE("month/day accept 1 or 2 digits") {
+        CHECK(parse_datetime("2024-1-1", "YYYY-MM-DD").has_value());
+    }
+    SUBCASE("hour/minute accept 1 or 2 digits") {
+        CHECK(parse_datetime("2024-01-01 1:2:00", "YYYY-MM-DD hh:mm:ss").has_value());
+    }
+    SUBCASE("second requires exactly 2 digits") {
+        CHECK_FALSE(parse_datetime("2024-01-01 01:00:0", "YYYY-MM-DD hh:mm:ss").has_value());
+    }
+    SUBCASE("year accepts 1 to 4 digits, not 5") {
+        CHECK(parse_datetime("24-01-01", "YYYY-MM-DD").has_value());
+        CHECK_FALSE(parse_datetime("20244-01-01", "YYYY-MM-DD").has_value());
+    }
+    SUBCASE("8-digit fractional seconds rejected") {
+        CHECK_FALSE(parse_datetime("2024-01-01 00:00:00.12345678", "YYYY-MM-DD hh:mm:ss.f+").has_value());
+    }
+    SUBCASE("bare-hour offset (no minutes) accepted") {
+        CHECK(parse_datetime("2024-01-01 13:45:30-05", "YYYY-MM-DD hh:mm:ss+tz").has_value());
+    }
+}
+
 // -----------------------------------------------------------------------------
 // Invalid inputs
 // -----------------------------------------------------------------------------
@@ -215,7 +239,7 @@ TEST_CASE("parse_datetime cannot parse a time-only pattern") {
 }
 
 // A datetime that merely *starts* valid is not valid: any content left over
-// after a successful pattern match causes rejection (enforced via ss.peek()).
+// after a successful pattern match causes rejection.
 TEST_CASE("parse_datetime rejects trailing content") {
     CHECK_FALSE(parse_datetime("2024-01-01 extra", "YYYY-MM-DD").has_value());
     CHECK_FALSE(parse_datetime("2024-01-01T10:00:00Zx", "YYYY-MM-DDThh:mm:ssZ").has_value());
