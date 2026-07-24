@@ -56,6 +56,78 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # -----------------------------------------------------------------------------
+# Required C++20 library capabilities
+# -----------------------------------------------------------------------------
+#
+# These probes compile real code rather than testing feature-test macros:
+# libc++ ships a <format> header gated behind _LIBCPP_HAS_NO_INCOMPLETE_FORMAT
+# through LLVM 16 — __cpp_lib_format is left undefined, and there is no
+# feature-test macro that reports this state truthfully. Compiling the
+# feature is the only toolchain-agnostic test for any of these four.
+
+include(CheckCXXSourceCompiles)
+
+check_cxx_source_compiles("
+#include <format>
+#include <string>
+int main() {
+    return std::format(\"{}\", 1).size() == 1 ? 0 : 1;
+}
+" HAWK_HAS_STD_FORMAT)
+
+check_cxx_source_compiles("
+#include <chrono>
+int main() {
+    std::chrono::year_month_day ymd{std::chrono::year{2024}, std::chrono::month{2}, std::chrono::day{29}};
+    return ymd.ok() ? 0 : 1;
+}
+" HAWK_HAS_CHRONO_CALENDAR)
+
+check_cxx_source_compiles("
+#include <charconv>
+int main() {
+    const char* s = \"1\";
+    int v{};
+    auto r = std::from_chars(s, s + 1, v);
+    return r.ec == std::errc{} ? 0 : 1;
+}
+" HAWK_HAS_INT_FROM_CHARS)
+
+set(CMAKE_REQUIRED_INCLUDES_SAVE ${CMAKE_REQUIRED_INCLUDES})
+set(CMAKE_REQUIRED_INCLUDES ${CMAKE_SOURCE_DIR}/third_party)
+check_cxx_source_compiles("
+#include <fast_float/fast_float.h>
+int main() {
+    const char* s = \"1.5\";
+    double v{};
+    auto r = fast_float::from_chars(s, s + 3, v);
+    return r.ec == std::errc{} ? 0 : 1;
+}
+" HAWK_HAS_FASTFLOAT_FROM_CHARS)
+set(CMAKE_REQUIRED_INCLUDES ${CMAKE_REQUIRED_INCLUDES_SAVE})
+
+if(NOT HAWK_HAS_STD_FORMAT OR NOT HAWK_HAS_CHRONO_CALENDAR OR
+  NOT HAWK_HAS_INT_FROM_CHARS OR NOT HAWK_HAS_FASTFLOAT_FROM_CHARS)
+    set(_hawk_missing "")
+    if(NOT HAWK_HAS_STD_FORMAT)
+        string(APPEND _hawk_missing "\n  - <format> / std::format")
+    endif()
+    if(NOT HAWK_HAS_CHRONO_CALENDAR)
+        string(APPEND _hawk_missing "\n  - std::chrono::year_month_day calendar validation")
+    endif()
+    if(NOT HAWK_HAS_INT_FROM_CHARS)
+        string(APPEND _hawk_missing "\n  - std::from_chars for integer types")
+    endif()
+    if(NOT HAWK_HAS_FASTFLOAT_FROM_CHARS)
+        string(APPEND _hawk_missing "\n  - fast_float::from_chars (vendored under third_party/fast_float, used for floating-point parsing)")
+    endif()
+    message(FATAL_ERROR
+        "Hawk requires a C++20 toolchain providing:${_hawk_missing}\n"
+        "Detected: ${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}\n"
+        "See README.md's Prerequisites section for known-good toolchains.")
+endif()
+
+# -----------------------------------------------------------------------------
 # Version header generation
 # -----------------------------------------------------------------------------
 
