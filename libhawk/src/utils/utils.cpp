@@ -12,6 +12,8 @@
 #include <string_view>
 #include <system_error>
 
+#include <fast_float/fast_float.h>
+
 namespace hawk::utils {
 
 std::string human_size(std::size_t bytes) {
@@ -82,7 +84,7 @@ bool parse_double(std::string_view s, double& out) {
     const char* begin = s.data();
     const char* end   = s.data() + s.size();
 
-    auto result = std::from_chars(begin, end, out);
+    auto result = fast_float::from_chars(begin, end, out);
     return result.ec == std::errc{} && result.ptr == end && std::isfinite(out);
 }
 

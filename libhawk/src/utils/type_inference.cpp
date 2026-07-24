@@ -19,6 +19,8 @@
 #include <utility>
 #include <vector>
 
+#include <fast_float/fast_float.h>
+
 namespace hawk {
 
 namespace {
@@ -35,7 +37,7 @@ bool try_integer(std::string_view field) {
 
 bool try_float(std::string_view field) {
     double out;
-    auto [ptr, ec] = std::from_chars(field.data(), field.data() + field.size(), out);
+    auto [ptr, ec] = fast_float::from_chars(field.data(), field.data() + field.size(), out);
     return ec == std::errc{} && ptr == field.data() + field.size();
 }
 

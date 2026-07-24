@@ -6,9 +6,10 @@
 #include <hawk/utils/utils.hpp>
 
 #include <algorithm>
-#include <charconv>
 #include <numeric>
 #include <system_error>
+
+#include <fast_float/fast_float.h>
 
 namespace hawk::inference {
 
@@ -92,7 +93,7 @@ bool detect_header(
         double tmp;
         const char* begin = trimmed.data();
         const char* end   = trimmed.data() + trimmed.size();
-        auto res = std::from_chars(begin, end, tmp);
+        auto res = fast_float::from_chars(begin, end, tmp);
         if (res.ec == std::errc{} && res.ptr == end) {
             out_has_header = false;
             return true;

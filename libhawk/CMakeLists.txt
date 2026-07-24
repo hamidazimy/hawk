@@ -42,6 +42,14 @@ target_include_directories(hawk PUBLIC
     $<INSTALL_INTERFACE:include>
 )
 
+# fast_float is vendored as a single header under third_party/fast_float, same
+# convention as third_party/doctest. SYSTEM keeps the vendored header out from
+# under -Wall/-Wextra/-Wpedantic; it is a private implementation detail (used
+# only in src/utils/*.cpp), so PRIVATE, not PUBLIC.
+target_include_directories(hawk SYSTEM PRIVATE
+    ${CMAKE_SOURCE_DIR}/third_party
+)
+
 # Require C++20
 target_compile_features(hawk PUBLIC cxx_std_20)
 

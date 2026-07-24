@@ -7,6 +7,7 @@ while read src; do \
     output=$(iwyu \
         -std=c++20 \
         -Ilibhawk/include \
+        -Ithird_party \
         -Ihawk-cli/src \
         $src 2>&1)
 
