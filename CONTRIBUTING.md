@@ -41,7 +41,7 @@ PRs will be reviewed on a best-effort basis. There is no SLA. The project's firs
 
 Prerequisites:
 
-- C++20 compiler: GCC 14+ (earlier libstdc++ lacks `std::chrono::parse`), Clang 16+, or MSVC 2022
+- C++20 compiler: GCC 13+, MSVC 2022, or Clang 17+ (an older Clang paired with libstdc++ 13+ also works — the floor is the standard library, not the Clang version; only the libc++ pairing needs 17+, where `std::format` stops being gated as experimental)
 - CMake 3.15+
 - IWYU (`include-what-you-use`) — required if you intend to commit; pre-commit hooks rely on it
 
