@@ -4,7 +4,8 @@
 #include <cstddef>
 #include <optional>
 #include <string>
-#include <string_view>
+
+#include <hawk/core/types.hpp>
 
 namespace hawk { class RecordSource; }
 namespace hawk { class RecordParser; }
@@ -38,7 +39,7 @@ private:
         bool nullable          = false;
         bool saw_value         = false;  // any non-empty field observed
         std::optional<std::string> datetime_pattern;
-        bool (*datetime_pre_screen)(std::string_view) = nullptr;
+        RecordCount datetime_invalid_count = 0; // phase-2 rows that failed a real parse_datetime check
     };
 
     static ColumnType resolve_type(const ColumnState& state);

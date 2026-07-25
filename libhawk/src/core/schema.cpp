@@ -46,6 +46,10 @@ void Schema::set_column_type(ColumnIndex index, ColumnType type,
     columns_[index].datetime_pattern = (type == ColumnType::DateTime)
         ? pattern
         : std::nullopt;
+    // A manual override has no inference scan behind it — reset rather
+    // than leave a stale count from whatever this column used to be (or
+    // from a scan under a different pattern).
+    columns_[index].datetime_invalid_count = 0;
 }
 
 std::optional<std::string> resolve_columns(

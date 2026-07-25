@@ -124,19 +124,40 @@ TEST_CASE("TypeInferrer abandons datetime when sampled values use inconsistent p
 
 TEST_CASE("datetime_sample_rows bounds full-parse pattern detection to the first N rows") {
     // Row 2 is structurally a local timestamp (correct digit/separator layout)
-    // but an impossible instant. Phase-2 datetime checks only pre-screen
-    // structurally; only phase-1 (bounded by datetime_sample_rows) full-parses.
+    // but an impossible instant.
     const Recs recs{"2024-01-01 13:45:30", "2024-01-02 13:45:30", "2024-99-99 99:99:99"};
 
-    SUBCASE("row 2 outside the sample window -> stays DateTime (pre-screen passes)") {
+    SUBCASE("row 2 outside the sample window -> phase 2 counts it, keeps DateTime") {
         Schema s = infer(recs, NO_HEADER,
                          TypeInferrer::Options{.max_sample_rows = 0, .datetime_sample_rows = 2});
         CHECK(s.column_type(0) == ColumnType::DateTime);
+        CHECK(s.column(0).datetime_invalid_count == 1u);
     }
-    SUBCASE("row 2 inside the sample window -> full parse rejects it, not DateTime") {
+    SUBCASE("row 2 inside the sample window -> phase 1's full parse rejects it, not DateTime") {
         Schema s = infer(recs, NO_HEADER,
                          TypeInferrer::Options{.max_sample_rows = 0, .datetime_sample_rows = 100});
         CHECK(s.column_type(0) == ColumnType::String);
+    }
+}
+
+TEST_CASE("phase 2 counts every datetime mismatch without downgrading the column") {
+    SUBCASE("a clean column has datetime_invalid_count == 0") {
+        Schema s = infer(Recs{"2024-01-01 13:45:30", "2024-01-02 13:45:30"}, NO_HEADER);
+        CHECK(s.column_type(0) == ColumnType::DateTime);
+        CHECK(s.column(0).datetime_invalid_count == 0u);
+    }
+    SUBCASE("multiple bad rows beyond the sample window are all counted, type stays DateTime") {
+        const Recs recs{
+            "2024-01-01 13:45:30",   // sampled, valid
+            "2024-01-02 13:45:30",   // sampled, valid
+            "2024-99-99 99:99:99",   // beyond sample, invalid (nonsense month/day/time)
+            "2024-01-03 13:45:30",   // beyond sample, valid
+            "2025-02-30 00:00:00",   // beyond sample, invalid (Feb 30 impossible)
+        };
+        Schema s = infer(recs, NO_HEADER,
+                         TypeInferrer::Options{.max_sample_rows = 0, .datetime_sample_rows = 2});
+        CHECK(s.column_type(0) == ColumnType::DateTime);
+        CHECK(s.column(0).datetime_invalid_count == 2u);
     }
 }
 

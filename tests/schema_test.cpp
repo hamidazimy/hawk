@@ -25,8 +25,9 @@ using namespace hawk;
 namespace {
 
 // A representative three-column schema: an integer, a nullable string, and a
-// DateTime carrying a pattern. All fields are initialised explicitly to stay
-// clean under -Wextra (-Wmissing-field-initializers).
+// DateTime carrying a pattern. All fields with no default member
+// initializer are set explicitly to stay clean under -Wextra
+// (-Wmissing-field-initializers); datetime_invalid_count defaults to 0.
 Schema sample_schema() {
     return Schema(std::vector<ColumnSchema>{
         ColumnSchema{.name = "id",   .type = ColumnType::Integer,  .nullable = false, .datetime_pattern = std::nullopt},
@@ -179,6 +180,16 @@ TEST_CASE("Schema::set_column_type updates the type and manages datetime_pattern
         s.set_column_type(0, ColumnType::Integer, "YYYY");
         CHECK(s.column_type(0) == ColumnType::Integer);
         CHECK_FALSE(s.column(0).datetime_pattern.has_value());
+    }
+    SUBCASE("switching type resets a nonzero datetime_invalid_count") {
+        Schema s2(std::vector<ColumnSchema>{
+            ColumnSchema{.name = "ts", .type = ColumnType::DateTime,
+                         .nullable = false, .datetime_pattern = "YYYY-MM-DD",
+                         .datetime_invalid_count = 5},
+        });
+        REQUIRE(s2.column(0).datetime_invalid_count == 5u);
+        s2.set_column_type(0, ColumnType::DateTime, "YYYY/MM/DD");
+        CHECK(s2.column(0).datetime_invalid_count == 0u);
     }
 }
 

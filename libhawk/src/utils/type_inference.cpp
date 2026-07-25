@@ -42,66 +42,15 @@ bool try_float(std::string_view field) {
 }
 
 // -----------------------------------------------------------------------------
-// Datetime pre-screens — cheap structural checks, no parsing
-// -----------------------------------------------------------------------------
-
-bool all_digits(std::string_view s, size_t start, size_t len) {
-    if (start + len > s.size()) return false;
-    for (size_t i = start; i < start + len; ++i) {
-        if (s[i] < '0' || s[i] > '9') return false;
-    }
-    return true;
-}
-
-// "YYYY-MM-DDThh:mm:ssZ" and "YYYY-MM-DDThh:mm:ss.f+Z"
-bool pre_screen_iso8601_utc(std::string_view s) {
-    if (s.size() < 20) return false;
-    if (s[19] == '.') {
-        if (s.size() < 22 || s.back() != 'Z') return false;
-    } else {
-        if (s[19] != 'Z') return false;
-    }
-    return s[4]  == '-' && s[7]  == '-' && s[10] == 'T' &&
-           s[13] == ':' && s[16] == ':' &&
-           all_digits(s, 0,  4) && all_digits(s, 5,  2) &&
-           all_digits(s, 8,  2) && all_digits(s, 11, 2) &&
-           all_digits(s, 14, 2) && all_digits(s, 17, 2);
-}
-
-// "YYYY-MM-DD hh:mm:ss" and "YYYY-MM-DD hh:mm:ss.f+"
-bool pre_screen_iso8601_local(std::string_view s) {
-    if (s.size() < 19) return false;
-    return s[4]  == '-' && s[7]  == '-' && s[10] == ' ' &&
-           s[13] == ':' && s[16] == ':' &&
-           all_digits(s, 0,  4) && all_digits(s, 5,  2) &&
-           all_digits(s, 8,  2) && all_digits(s, 11, 2) &&
-           all_digits(s, 14, 2) && all_digits(s, 17, 2);
-}
-
-// "YYYY-MM-DD"
-bool pre_screen_date_only(std::string_view s) {
-    if (s.size() != 10) return false;
-    return s[4] == '-' && s[7] == '-' &&
-           all_digits(s, 0, 4) &&
-           all_digits(s, 5, 2) &&
-           all_digits(s, 8, 2);
-}
-
-// -----------------------------------------------------------------------------
 // Known datetime patterns
 // -----------------------------------------------------------------------------
 
-struct KnownPattern {
-    std::string_view pattern;
-    bool (*pre_screen)(std::string_view);
-};
-
-constexpr KnownPattern KNOWN_PATTERNS[] = {
-    { "YYYY-MM-DDThh:mm:ss.f+Z", pre_screen_iso8601_utc   },
-    { "YYYY-MM-DDThh:mm:ssZ",    pre_screen_iso8601_utc   },
-    { "YYYY-MM-DD hh:mm:ss.f+",  pre_screen_iso8601_local },
-    { "YYYY-MM-DD hh:mm:ss",     pre_screen_iso8601_local },
-    { "YYYY-MM-DD",              pre_screen_date_only     },
+constexpr std::string_view KNOWN_PATTERNS[] = {
+    "YYYY-MM-DDThh:mm:ss.f+Z",
+    "YYYY-MM-DDThh:mm:ssZ",
+    "YYYY-MM-DD hh:mm:ss.f+",
+    "YYYY-MM-DD hh:mm:ss",
+    "YYYY-MM-DD",
 };
 
 static constexpr size_t KNOWN_PATTERN_COUNT =
@@ -110,7 +59,7 @@ static constexpr size_t KNOWN_PATTERN_COUNT =
 // Phase 1 only — full parse to identify the pattern index.
 std::optional<size_t> try_datetime_index(std::string_view field) {
     for (size_t i = 0; i < KNOWN_PATTERN_COUNT; ++i) {
-        if (utils::parse_datetime(field, KNOWN_PATTERNS[i].pattern).has_value())
+        if (utils::parse_datetime(field, KNOWN_PATTERNS[i]).has_value())
             return i;
     }
     return std::nullopt;
@@ -179,25 +128,27 @@ Schema TypeInferrer::infer(
 
             auto idx = try_datetime_index(field);
             if (!idx.has_value()) {
-                states[col].could_be_datetime   = false;
-                states[col].datetime_pattern    = std::nullopt;
-                states[col].datetime_pre_screen = nullptr;
+                states[col].could_be_datetime = false;
+                states[col].datetime_pattern  = std::nullopt;
             } else if (!states[col].datetime_pattern.has_value()) {
-                // First match — lock in pattern and pre-screen
-                states[col].datetime_pattern    = std::string(KNOWN_PATTERNS[*idx].pattern);
-                states[col].datetime_pre_screen = KNOWN_PATTERNS[*idx].pre_screen;
-            } else if (states[col].datetime_pattern != KNOWN_PATTERNS[*idx].pattern) {
-                // Inconsistent pattern across sample — not datetime
-                states[col].could_be_datetime   = false;
-                states[col].datetime_pattern    = std::nullopt;
-                states[col].datetime_pre_screen = nullptr;
+                // First match — lock in the pattern.
+                states[col].datetime_pattern = std::string(KNOWN_PATTERNS[*idx]);
+            } else if (states[col].datetime_pattern != KNOWN_PATTERNS[*idx]) {
+                // Inconsistent pattern across sample — not datetime.
+                states[col].could_be_datetime = false;
+                states[col].datetime_pattern  = std::nullopt;
             }
         }
     }
 
     // -------------------------------------------------------------------------
     // Phase 2 — full scan
-    // Integer/float: full check. Datetime: pre-screen only, no parsing.
+    // Integer/float/datetime: full check on every row, unconditionally — no
+    // cheap pre-screen shortcut. A datetime row that fails parse_datetime
+    // does NOT downgrade the column: phase 1 already established DateTime
+    // as the right hypothesis from a real sample, and a minority of bad
+    // rows shouldn't overturn it. The count is surfaced to the analyst
+    // instead — see hawk-cli's confirm_schema.
     // -------------------------------------------------------------------------
     const RecordCount scan_limit =
         (options_.max_sample_rows == 0)
@@ -223,12 +174,9 @@ Schema TypeInferrer::infer(
             if (states[col].could_be_float && !try_float(field))
                 states[col].could_be_float = false;
 
-            if (states[col].could_be_datetime &&
-                states[col].datetime_pre_screen != nullptr &&
-                !states[col].datetime_pre_screen(field)) {
-                states[col].could_be_datetime   = false;
-                states[col].datetime_pattern    = std::nullopt;
-                states[col].datetime_pre_screen = nullptr;
+            if (states[col].could_be_datetime && states[col].datetime_pattern.has_value() &&
+                !utils::parse_datetime(field, *states[col].datetime_pattern).has_value()) {
+                ++states[col].datetime_invalid_count;
             }
         }
     }
@@ -253,8 +201,10 @@ Schema TypeInferrer::infer(
         schema_col.name     = names[i];
         schema_col.type     = resolve_type(states[i]);
         schema_col.nullable = states[i].nullable;
-        if (schema_col.type == ColumnType::DateTime)
-            schema_col.datetime_pattern = states[i].datetime_pattern;
+        if (schema_col.type == ColumnType::DateTime) {
+            schema_col.datetime_pattern       = states[i].datetime_pattern;
+            schema_col.datetime_invalid_count = states[i].datetime_invalid_count;
+        }
         columns.push_back(std::move(schema_col));
     }
 

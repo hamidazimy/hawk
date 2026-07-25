@@ -4,6 +4,8 @@
 #include <string>
 #include <optional>
 
+#include <hawk/core/types.hpp>
+
 namespace hawk {
 
 enum class ColumnType {
@@ -22,6 +24,12 @@ struct ColumnSchema {
     bool nullable = false;
     std::optional<std::string> datetime_pattern;    // only set when type == DateTime
                                                     // e.g. "YYYY-MM-DD hh:mm:ss.f+"
+    // Rows whose value failed a real parse_datetime check during phase 2 of
+    // type inference. Only meaningful when type == DateTime; never affects
+    // the type itself — see type_inference.cpp's phase-2 comment. Reset to
+    // 0 by Schema::set_column_type (a manual override has no scan behind
+    // it).
+    RecordCount datetime_invalid_count = 0;
 };
 
 inline const char* column_type_name(ColumnType type) {
