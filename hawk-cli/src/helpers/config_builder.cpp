@@ -3,9 +3,11 @@
 #include <args.hpp>
 #include <helpers/utils.hpp>
 #include <helpers/spinner.hpp>
+#include <cli/renderers.hpp>
 
 #include <hawk/hawk.hpp>
 
+#include <format>
 #include <iostream>
 #include <optional>
 #include <stdlib.h>
@@ -151,13 +153,17 @@ SessionConfig build_config(const Args& args, const RecordSource& source) {
     }
 }
 
+static std::string display_column_name(ColumnIndex index, const std::string& name) {
+    return name.empty() ? "$col" + std::to_string(index + 1) : name;
+}
+
 void confirm_schema(Session& session, const Args& args) {
     const auto& schema = session.schema();
     std::cout << "Inferred column types:\n";
     for (ColumnIndex i = 0; i < schema.column_count(); ++i) {
         const auto& col = schema.column(i);
         std::cout << "  [" << (i + 1) << "] "
-                  << (col.name.empty() ? "$col" + std::to_string(i + 1) : col.name)
+                  << display_column_name(i, col.name)
                   << " — " << column_type_name(col.type);
         if (col.nullable)
             std::cout << " (nullable)";
@@ -166,6 +172,17 @@ void confirm_schema(Session& session, const Args& args) {
         std::cout << "\n";
     }
     std::cout << "\n";
+
+    for (ColumnIndex i = 0; i < schema.column_count(); ++i) {
+        const auto& col = schema.column(i);
+        if (col.type != ColumnType::DateTime || col.datetime_invalid_count == 0)
+            continue;
+        renderers::render_warning(std::format(
+            "column '{}' has {} row(s) that don't match pattern '{}' (kept as datetime)",
+            display_column_name(i, col.name),
+            col.datetime_invalid_count,
+            col.datetime_pattern.value_or("?")));
+    }
 
     if (args.no_confirm)
         return;

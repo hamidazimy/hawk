@@ -77,7 +77,7 @@ int main(int argc, char* argv[]) {
         // -------------------------------------------------------------
         // Confirm schema
         // -------------------------------------------------------------
-        // hawk::cli::confirm_schema(*session, args); // TODO: Implement schema confirmation.
+        hawk::cli::confirm_schema(*session, args);
 
         // -------------------------------------------------------------
         // Enter interactive mode
