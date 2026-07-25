@@ -343,6 +343,42 @@ void REPL::execute_impl(const CliSort& cmd) { dispatch(SortCommand{cmd.column, c
 
 Subclass `platform::FileMapping` for new OS.
 
+## Vendored Dependencies
+
+`third_party/` holds every external dependency Hawk builds against (see
+`CLAUDE.md` for vendoring mechanics and the read-only-boundary rule for
+their internals). This records *why* each one is vendored rather than
+assumed installed or pulled from a package manager — not self-evident from
+the directory listing alone:
+
+- **`doctest`** (single header) — a test framework needs zero footprint in
+  the shipped binary and no assumption that the target system (Linux, or
+  Windows via MinGW cross-compile) has a matching package available;
+  vendoring the single header keeps the test build self-contained and
+  reproducible from source, with no separate install step.
+- **`replxx`** (git submodule) — line editing, history, and cross-platform
+  terminal handling for the REPL. Not a common system package on any of
+  Hawk's target platforms (least of all Windows), and it isn't
+  header-only, so a submodule tracking upstream directly is the natural
+  fit — contributors get the exact pinned version without hunting for or
+  building it separately.
+- **`fast_float`** (single header) — floating-point `std::from_chars` is
+  one of the least uniformly implemented corners of the C++17/20 standard
+  library: libc++ deletes the floating-point overload entirely until a
+  very recent LLVM version, which made it impossible to build Hawk with
+  Clang paired with libc++ at all. `fast_float` is the reference
+  implementation the standard's own `from_chars` floating-point behavior
+  was modeled on, so depending on it directly is not a workaround — it's
+  using the source of truth instead of waiting for every vendor to catch
+  up. This mirrors `std::chrono::parse`'s removal: that dependency was
+  replaced with a hand-rolled parser once its cross-vendor unevenness
+  (MSVC accepting calendar-invalid dates; libc++ never implementing it at
+  all) outweighed the convenience of using the standard function.
+  `fast_float` can likely be removed the same way — once Hawk's supported
+  compiler/stdlib floor no longer includes any vendor lacking a working
+  floating-point `from_chars`, the three call sites could move back to
+  `std::from_chars` directly.
+
 ## Developer Mental Model
 
 **Think in layers — never bypass:**
