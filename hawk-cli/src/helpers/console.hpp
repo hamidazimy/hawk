@@ -8,7 +8,7 @@ namespace console {
 
 void setup_console();
 
-int terminal_width();
+std::size_t terminal_width(std::FILE* stream = stdout);
 
 // Returns true if the given stream is connected to a terminal.
 // Streams: STDIN, STDOUT, STDERR.
