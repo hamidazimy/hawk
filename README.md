@@ -98,7 +98,8 @@ That's the breach. The full walkthrough — including post-compromise pivot, sec
 
 **Prerequisites**
 
-- C++20 compiler: GCC 13+, MSVC 2022, or Clang 17+ (an older Clang paired with libstdc++ 13+ also works — the floor is the standard library, not the Clang version; only the libc++ pairing needs 17+, where `std::format` stops being gated as experimental)
+- C++20 compiler: GCC 13+ or Clang 17+ on Linux, MSVC 2022 on Windows — these are the required, CI-enforced minimums (an older Clang paired with libstdc++ 13+ also works — the floor is the standard library, not the Clang version; only the libc++ pairing needs 17+, where `std::format` stops being gated as experimental)
+- macOS is not a guaranteed target, but Hawk builds and passes its test suite cleanly on `macos-latest`'s default Apple Clang, verified in CI (see `.github/workflows/ci.yml`). Apple Clang's version numbers don't map 1:1 to upstream LLVM releases, so no specific version floor is promised there the way it is for Linux/Windows
 - CMake 3.15+
 
 **Linux / macOS**
@@ -113,6 +114,11 @@ Or manually:
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
+
+(On macOS, `HAWK_STATIC_BUILD` — on by default — has no effect: Apple's
+toolchain doesn't support statically linking the system C++ runtime, so the
+resulting binary always dynamically links `libc++`/`libSystem` regardless
+of this option.)
 
 **Windows**
 

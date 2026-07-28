@@ -147,6 +147,14 @@ if(HAWK_STATIC_BUILD)
 
     set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 
+    # macOS is deliberately excluded here: Apple's toolchain does not
+    # support statically linking the system C++ runtime or libSystem the
+    # way GCC's -static-libgcc/-static-libstdc++ does on Linux (no static
+    # libSystem is shipped — a platform constraint, not a Hawk limitation).
+    # As a result, HAWK_STATIC_BUILD=ON is currently a functional no-op on
+    # macOS: the resulting binary still dynamically links libc++.dylib and
+    # libSystem.dylib, identical to what OFF would produce (verified via
+    # `otool -L` on a real macos-latest build).
     if(UNIX AND NOT APPLE)
         set(CMAKE_EXE_LINKER_FLAGS
             "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++"

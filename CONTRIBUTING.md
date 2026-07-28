@@ -41,7 +41,8 @@ PRs will be reviewed on a best-effort basis. There is no SLA. The project's firs
 
 Prerequisites:
 
-- C++20 compiler: GCC 13+, MSVC 2022, or Clang 17+ (an older Clang paired with libstdc++ 13+ also works — the floor is the standard library, not the Clang version; only the libc++ pairing needs 17+, where `std::format` stops being gated as experimental)
+- C++20 compiler: GCC 13+ or Clang 17+ on Linux, MSVC 2022 on Windows — these are the required, CI-enforced minimums (an older Clang paired with libstdc++ 13+ also works — the floor is the standard library, not the Clang version; only the libc++ pairing needs 17+, where `std::format` stops being gated as experimental)
+- macOS is not a guaranteed target, but Hawk builds and passes its test suite cleanly on `macos-latest`'s default Apple Clang, verified in CI (see `.github/workflows/ci.yml`). Apple Clang's version numbers don't map 1:1 to upstream LLVM releases, so no specific version floor is promised there the way it is for Linux/Windows
 - CMake 3.15+
 - IWYU (`include-what-you-use`) — required if you intend to commit; pre-commit hooks rely on it
 

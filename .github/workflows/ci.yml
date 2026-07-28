@@ -50,3 +50,27 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build-msvc -C Release --output-on-failure
+
+  macos:
+    name: macOS (Clang)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      # macOS is a tested bonus platform, not a guaranteed/required target
+      # the way the Linux and Windows jobs are. No compiler version is
+      # pinned here: macos-latest ships a single Apple Clang toolchain (via
+      # Xcode) on PATH, not several side-by-side major versions the way
+      # Ubuntu's apt does for GCC. This job simply confirms Hawk builds and
+      # passes its test suite cleanly on whatever Apple Clang macos-latest
+      # currently defaults to.
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DHAWK_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build -j
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
