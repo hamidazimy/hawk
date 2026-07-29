@@ -165,6 +165,21 @@ if(HAWK_STATIC_BUILD)
         set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     endif()
 
+    # MinGW cross-compile (build-win.sh / mingw-toolchain.cmake): CMake's
+    # UNIX/WIN32 reflect the cross-compile TARGET, not the host running the
+    # cross-compiler, so this case is caught by neither branch above (UNIX
+    # is false for a Windows target; MSVC is false for a GCC-based MinGW
+    # toolchain) -- HAWK_STATIC_BUILD=ON was silently a no-op here. Same
+    # flags as the Linux branch are sufficient (confirmed empirically via a
+    # real cross-compile + Wine execution): this toolchain's default
+    # threading model is win32, not posix, so libwinpthread-1.dll is never
+    # linked in the first place, unlike some other MinGW configurations.
+    if(WIN32 AND NOT MSVC)
+        set(CMAKE_EXE_LINKER_FLAGS
+            "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++"
+        )
+    endif()
+
 endif()
 
 # -----------------------------------------------------------------------------

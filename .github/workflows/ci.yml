@@ -51,6 +51,46 @@ jobs:
       - name: Test
         run: ctest --test-dir build-msvc -C Release --output-on-failure
 
+  windows-mingw:
+    name: Windows (MinGW cross-compile, via Wine)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      # This job cross-compiles for Windows from a Linux runner (the same
+      # path build-win.sh uses locally) and then actually EXECUTES the
+      # result under Wine, rather than only confirming it links. Wine and
+      # mingw-w64 aren't preinstalled on ubuntu-latest -- both install
+      # cleanly via apt. CMAKE_CROSSCOMPILING_EMULATOR=wine is the standard
+      # CMake mechanism for running cross-compiled tests under an emulator:
+      # every add_test-registered command (see tests/CMakeLists.txt) is
+      # automatically prefixed with it, so `ctest` below needs no special
+      # handling and reports the same pass/fail shape as the other three
+      # jobs. This does NOT exercise hawk-cli's console/replxx/renderer
+      # code -- see docs/testing.md's "Verifying CLI-side changes" section
+      # for what remains behaviorally-verified-only on every platform,
+      # Windows included.
+      - name: Install MinGW + Wine
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y mingw-w64 wine wine64
+
+      - name: Configure
+        run: >
+          cmake -S . -B build-win
+          -DCMAKE_TOOLCHAIN_FILE=mingw-toolchain.cmake
+          -DHAWK_STATIC_BUILD=ON -DCMAKE_BUILD_TYPE=Release
+          -DHAWK_BUILD_TESTS=ON -DCMAKE_CROSSCOMPILING_EMULATOR=wine
+
+      - name: Build
+        run: cmake --build build-win -j
+
+      - name: Test (under Wine)
+        run: ctest --test-dir build-win --output-on-failure
+
   macos:
     name: macOS (Clang)
     runs-on: macos-latest

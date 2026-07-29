@@ -51,6 +51,17 @@ itself. For renderer changes where byte-exact output matters (e.g. UTF-8
 handling), redirect to a file and inspect with `hexdump`/`xxd` rather than
 eyeballing a terminal.
 
+Windows coverage has the same shape as every other platform: the
+`windows-mingw` CI job (cross-compiled via MinGW, executed under Wine) runs
+this same `hawk-tests` binary and proves nothing about `hawk-cli`'s
+console/replxx/renderer code, for the same reason the native `windows` job
+doesn't either — none of that code is linked into the test binary (see
+above). Treat a green `windows-mingw` job as confirmation the engine and
+its Windows-specific file-mapping code work correctly under a real Win32
+environment (verified: `CreateFileA`/`CreateFileMappingA`/`MapViewOfFile`
+all behave correctly under Wine) — not as "Windows CLI behavior is now
+covered."
+
 ## Fixtures
 
 Session integration tests read checked-in CSVs from `tests/fixtures/`
