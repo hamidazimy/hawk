@@ -19,12 +19,23 @@ CMakeFiles/
 cmake_install.cmake
 Makefile
 
+# IWYU / clangd tooling
+compile_commands.json
+.cache/
+
 # IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
+
+# Visual Studio "Open Folder" cache
+.vs/
+
+# MSVC debug/incremental-link artifacts
+*.pdb
+*.ilk
 
 # OS files
 .DS_Store
