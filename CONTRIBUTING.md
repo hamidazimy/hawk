@@ -46,6 +46,8 @@ Prerequisites:
 - CMake 3.15+
 - IWYU (`include-what-you-use`) — required if you intend to commit; pre-commit hooks rely on it
 
+If you didn't clone with `--recursive`, initialize the `replxx` submodule first: `git submodule update --init`.
+
 Build:
 
 ```bash
@@ -65,7 +67,7 @@ Run the tool against the sample log to verify your build:
 ./build/bin/hawk sample_logs/auth.csv
 ```
 
-Tests are scaffolded but not yet populated. To build with tests enabled:
+A doctest-based test suite covers `libhawk` broadly plus one self-contained `hawk-cli` helper unit — see `docs/testing.md` for the full breakdown. To build with tests enabled:
 
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DHAWK_BUILD_TESTS=ON

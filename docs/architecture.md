@@ -9,25 +9,25 @@ Hawk separates the CLI shell (`hawk-cli`) from the core analysis engine (`libhaw
 ```text
 hawk-cli/
 ├── CMakeLists.txt                  # Executable build
-├── src/
-│   ├── main.cpp                    # Entry: parse args → SessionBuilder → build config → Session → REPL
-│   ├── args.hpp/cpp                # CLI args: log_file, --delimiter, --header, --ignore-case, --no-color
-│   ├── constants.hpp               # Shared constants
-│   ├── helpers/                    # Helpers, including utils, etc.
-│   │   ├── config_builder.hpp/cpp      # merge_config (args + inference + confirm), confirm_schema
-│   │   ├── console.hpp/cpp             # console:: sub-namespace — terminal width query,
-│   │   │                               #  TTY detection (is_tty / stdin_is_tty / stdout_is_tty /
-│   │   │                               #  stderr_is_tty), Windows console setup (ANSI + UTF-8)
-│   │   ├── output_decorator.hpp/cpp    # SGR colors (info/error/warning). Global color enable flag.
-│   │   ├── spinner.hpp                 # RAII spinner for long-running operations (header-only)
-│   │   └── utils.hpp/cpp               # Delimiter parsing, quote-aware tokenize, misc
-│   └── cli/                        # REPL + command surface
-│       ├── repl.hpp/cpp                # REPL: owns Session and replxx editor, runs loop, executes CliCommand
-│       ├── renderers.hpp/cpp           # Formats CommandResult via RenderContext + RenderOptions
-│       ├── parsers.hpp/cpp             # Raw input → typed CliCommand
-│       ├── commands.hpp                # CliCommand structs, CliCommand variant, Modes, CommandInfo struct
-│       └── command_table.hpp           # Static command_table array (includes commands.hpp + parsers.hpp)
-└── version.hpp.in                  # Version injection
+└── src/
+    ├── main.cpp                    # Entry: parse args → SessionBuilder → build config → Session → REPL
+    ├── args.hpp/cpp                # CLI args: log_file, --delimiter, --header, --ignore-case, --no-color
+    ├── constants.hpp               # Shared constants
+    ├── version.hpp.in              # Version injection
+    ├── helpers/                    # Helpers, including utils, etc.
+    │   ├── config_builder.hpp/cpp      # merge_config (args + inference + confirm), confirm_schema
+    │   ├── console.hpp/cpp             # console:: sub-namespace — terminal width query,
+    │   │                               #  TTY detection (is_tty / stdin_is_tty / stdout_is_tty /
+    │   │                               #  stderr_is_tty), Windows console setup (ANSI + UTF-8)
+    │   ├── output_decorator.hpp/cpp    # SGR colors (info/error/warning). Global color enable flag.
+    │   ├── spinner.hpp                 # RAII spinner for long-running operations (header-only)
+    │   └── utils.hpp/cpp               # Delimiter parsing, quote-aware tokenize, misc
+    └── cli/                        # REPL + command surface
+        ├── repl.hpp/cpp                # REPL: owns Session and replxx editor, runs loop, executes CliCommand
+        ├── renderers.hpp/cpp           # Formats CommandResult via RenderContext + RenderOptions
+        ├── parsers.hpp/cpp             # Raw input → typed CliCommand
+        ├── commands.hpp                # CliCommand structs, CliCommand variant, Modes, CommandInfo struct
+        └── command_table.hpp           # Static command_table array (includes commands.hpp + parsers.hpp)
 ```
 
 **Key flow (`main.cpp`):**

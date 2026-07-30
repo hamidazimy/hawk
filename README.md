@@ -24,13 +24,16 @@ Hawk is not a SIEM, an ingestion pipeline, a real-time monitor, or a database. T
 
 ## Quick start
 
-Clone the repository, then:
+Clone the repository (the `--recursive` flag is required — Hawk vendors `replxx` as a git submodule), then:
 
 ```bash
+git clone --recursive https://github.com/hamidazimy/hawk.git
 cd hawk
 ./build.sh
 ./build/bin/hawk sample_logs/auth.csv
 ```
+
+Already cloned without `--recursive`? Run `git submodule update --init` before building.
 
 If you just want to try Hawk without building from source, pre-built binaries are available on the releases page.
 
@@ -103,6 +106,8 @@ That's the breach. The full walkthrough — including post-compromise pivot, sec
 - CMake 3.15+
 
 **Linux / macOS**
+
+If you didn't clone with `--recursive`, first run `git submodule update --init`.
 
 ```bash
 ./build.sh                       # release build with sensible defaults
