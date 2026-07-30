@@ -345,11 +345,10 @@ Subclass `platform::FileMapping` for new OS.
 
 ## Vendored Dependencies
 
-`third_party/` holds every external dependency Hawk builds against (see
-`CLAUDE.md` for vendoring mechanics and the read-only-boundary rule for
-their internals). This records *why* each one is vendored rather than
-assumed installed or pulled from a package manager — not self-evident from
-the directory listing alone:
+`third_party/` holds every external dependency Hawk builds against. This
+records *why* each one is vendored rather than assumed installed or pulled
+from a package manager — not self-evident from the directory listing
+alone:
 
 - **`doctest`** (single header) — a test framework needs zero footprint in
   the shipped binary and no assumption that the target system (Linux, or
