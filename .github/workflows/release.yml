@@ -1,0 +1,125 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: >
+          Version to release, WITHOUT the leading v (e.g. 0.8.0). Must
+          match CMakeLists.txt's PROJECT_VERSION on the tagged commit, and
+          CHANGELOG.md must already have a "## [<version>]" section. The
+          vX.Y.Z tag must already exist and be pushed -- this workflow does
+          not create it.
+        required: true
+        type: string
+
+jobs:
+  release:
+    name: Build and publish release binaries
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          ref: v${{ inputs.version }}
+
+      # Fails fast, before any build work, if the tagged commit's own
+      # CMakeLists.txt disagrees with the version being released -- catches
+      # the case where the tag was cut before (or without) a real version
+      # bump landing, which would otherwise ship a binary whose own
+      # `hawk --version` output contradicts its release tag.
+      - name: Verify version input matches CMakeLists.txt
+        run: |
+          CMAKE_VERSION=$(grep -oP '(?<=project\(hawk VERSION )[0-9]+\.[0-9]+\.[0-9]+' CMakeLists.txt)
+          if [ "$CMAKE_VERSION" != "${{ inputs.version }}" ]; then
+            echo "::error::Version mismatch: input is '${{ inputs.version }}', but CMakeLists.txt's PROJECT_VERSION on tag v${{ inputs.version }} is '$CMAKE_VERSION'"
+            exit 1
+          fi
+
+      # CHANGELOG.md is the honest source for release notes -- far more
+      # useful than this project's tag annotations (checked during
+      # planning: v0.7.0's is just "Hawk v0.7.0") or gh's auto-generated
+      # notes. Fails fast if the section is missing rather than publish
+      # with empty/wrong notes.
+      - name: Extract CHANGELOG.md section for this version
+        run: |
+          awk "/^## \[${{ inputs.version }}\]/{flag=1; print; next} /^## \[/{flag=0} flag" CHANGELOG.md > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            echo "::error::No CHANGELOG.md section found for [${{ inputs.version }}] -- add the entry before releasing"
+            exit 1
+          fi
+
+      # Same Configure line as ci.yml's linux: job (GCC 13 pinned, matching
+      # the documented compiler floor), plus -DHAWK_STATIC_BUILD=ON for
+      # self-documentation (redundant with the CMake option's default, but
+      # a release build shouldn't rely on a reader knowing that default).
+      # -DHAWK_BUILD_TESTS=ON: this build is test-gated before packaging,
+      # not just compiled -- see "Design choices".
+      - name: Configure Linux build
+        run: >
+          cmake -S . -B build-linux-release -DCMAKE_BUILD_TYPE=Release
+          -DHAWK_STATIC_BUILD=ON -DHAWK_BUILD_TESTS=ON
+          -DCMAKE_C_COMPILER=gcc-13 -DCMAKE_CXX_COMPILER=g++-13
+
+      - name: Build Linux binary
+        run: cmake --build build-linux-release -j
+
+      - name: Test Linux binary
+        run: ctest --test-dir build-linux-release --output-on-failure
+
+      - name: Package Linux binary
+        run: cp build-linux-release/bin/hawk "hawk-v${{ inputs.version }}-linux-x86_64"
+
+      # mingw-w64 AND wine/wine64 are needed now -- this build is
+      # test-gated the same way ci.yml's windows-mingw: job is (see
+      # "Design choices"). Neither is preinstalled on ubuntu-latest.
+      - name: Install MinGW + Wine
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y mingw-w64 wine wine64
+
+      # Same toolchain file and flags as ci.yml's windows-mingw: job,
+      # verbatim -- including -DHAWK_BUILD_TESTS=ON and
+      # -DCMAKE_CROSSCOMPILING_EMULATOR=wine, the exact pattern plan 033
+      # proved works. This is deliberately the same build, not a
+      # lighter-weight variant.
+      - name: Configure Windows build
+        run: >
+          cmake -S . -B build-windows-release
+          -DCMAKE_TOOLCHAIN_FILE=mingw-toolchain.cmake
+          -DHAWK_STATIC_BUILD=ON -DCMAKE_BUILD_TYPE=Release
+          -DHAWK_BUILD_TESTS=ON -DCMAKE_CROSSCOMPILING_EMULATOR=wine
+
+      - name: Build Windows binary
+        run: cmake --build build-windows-release -j
+
+      - name: Test Windows binary (under Wine)
+        run: ctest --test-dir build-windows-release --output-on-failure
+
+      - name: Package Windows binary
+        run: cp build-windows-release/bin/hawk.exe "hawk-v${{ inputs.version }}-windows-x86_64.exe"
+
+      - name: Compute checksums
+        run: |
+          sha256sum \
+            "hawk-v${{ inputs.version }}-linux-x86_64" \
+            "hawk-v${{ inputs.version }}-windows-x86_64.exe" \
+            > SHA256SUMS
+
+      # --verify-tag: the tag must already exist and be pushed -- this
+      # workflow never creates one itself, keeping tagging and releasing
+      # two separate, individually-gated operator acts.
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${{ inputs.version }}" \
+            --verify-tag \
+            --title "Hawk v${{ inputs.version }}" \
+            --notes-file release-notes.md \
+            "hawk-v${{ inputs.version }}-linux-x86_64" \
+            "hawk-v${{ inputs.version }}-windows-x86_64.exe" \
+            SHA256SUMS
