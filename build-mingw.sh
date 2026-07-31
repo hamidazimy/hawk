@@ -22,8 +22,8 @@ echo ""
 echo "Building hawk.exe..."
 cmake --build . -j$(nproc 2>/dev/null || echo 4)
 
-
 echo ""
 echo "Build complete!"
 echo ""
 echo "Binary location: build-mingw/bin/hawk.exe"
+echo ""
