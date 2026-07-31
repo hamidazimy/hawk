@@ -51,7 +51,7 @@ If you didn't clone with `--recursive`, initialize the `replxx` submodule first:
 Build:
 
 ```bash
-./build.sh                  # Linux release build with sensible defaults
+./build.sh
 ```
 
 Or manually:
@@ -60,6 +60,8 @@ Or manually:
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
+
+Windows contributors: see [`README.md`'s Building section](README.md#building) for the three supported native/cross-compile paths (`build-mingw.sh`, `build-msvc.ps1`, `build-mingw.ps1`).
 
 Run the tool against the sample log to verify your build:
 
