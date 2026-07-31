@@ -60,7 +60,7 @@ jobs:
           submodules: recursive
 
       # This job cross-compiles for Windows from a Linux runner (the same
-      # path build-win.sh uses locally) and then actually EXECUTES the
+      # path build-mingw.sh uses locally) and then actually EXECUTES the
       # result under Wine, rather than only confirming it links. Wine and
       # mingw-w64 aren't preinstalled on ubuntu-latest -- both install
       # cleanly via apt. CMAKE_CROSSCOMPILING_EMULATOR=wine is the standard
@@ -80,16 +80,16 @@ jobs:
 
       - name: Configure
         run: >
-          cmake -S . -B build-win
+          cmake -S . -B build-mingw
           -DCMAKE_TOOLCHAIN_FILE=mingw-toolchain.cmake
           -DHAWK_STATIC_BUILD=ON -DCMAKE_BUILD_TYPE=Release
           -DHAWK_BUILD_TESTS=ON -DCMAKE_CROSSCOMPILING_EMULATOR=wine
 
       - name: Build
-        run: cmake --build build-win -j
+        run: cmake --build build-mingw -j
 
       - name: Test (under Wine)
-        run: ctest --test-dir build-win --output-on-failure
+        run: ctest --test-dir build-mingw --output-on-failure
 
   macos:
     name: macOS (Clang)

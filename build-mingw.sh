@@ -6,8 +6,8 @@ echo "=============================================="
 echo ""
 
 # Create a separate build directory for Windows
-mkdir -p build-win
-cd build-win
+mkdir -p build-mingw
+cd build-mingw
 
 # Configure with CMake using the Toolchain file, forcing static build
 echo "Configuring with CMake..."
@@ -25,4 +25,4 @@ cmake --build . -j$(nproc 2>/dev/null || echo 4)
 echo ""
 echo "Build complete!"
 echo ""
-echo "Binary location: build-win/bin/hawk.exe"
+echo "Binary location: build-mingw/bin/hawk.exe"

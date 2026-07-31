@@ -165,7 +165,7 @@ if(HAWK_STATIC_BUILD)
         set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     endif()
 
-    # MinGW cross-compile (build-win.sh / mingw-toolchain.cmake): CMake's
+    # MinGW cross-compile (build-mingw.sh / mingw-toolchain.cmake): CMake's
     # UNIX/WIN32 reflect the cross-compile TARGET, not the host running the
     # cross-compiler, so this case is caught by neither branch above (UNIX
     # is false for a Windows target; MSVC is false for a GCC-based MinGW
