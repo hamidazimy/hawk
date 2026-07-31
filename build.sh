@@ -21,11 +21,10 @@ cmake -S .. -B . \
 echo ""
 echo "Building..."
 cmake --build . -j$(nproc 2>/dev/null || echo 4)
-cmake --install .
 
 echo ""
 echo "Build complete!"
 echo ""
-echo "Binary location: build/bin/hawk (or ~/.local/bin/hawk if installed)"
+echo "Binary location: build/bin/hawk"
 echo "To run: ./build/bin/hawk sample_logs/auth.csv"
 echo ""
