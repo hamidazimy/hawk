@@ -99,18 +99,17 @@ That's the breach. The full walkthrough — including post-compromise pivot, sec
 
 ## Building
 
-**Prerequisites**
+### Prerequisites
 
 - C++20 compiler: GCC 13+ or Clang 17+ on Linux, MSVC 2022 on Windows — these are the required, CI-enforced minimums (an older Clang paired with libstdc++ 13+ also works — the floor is the standard library, not the Clang version; only the libc++ pairing needs 17+, where `std::format` stops being gated as experimental)
 - macOS is not a guaranteed target, but Hawk builds and passes its test suite cleanly on `macos-latest`'s default Apple Clang, verified in CI (see `.github/workflows/ci.yml`). Apple Clang's version numbers don't map 1:1 to upstream LLVM releases, so no specific version floor is promised there the way it is for Linux/Windows
 - CMake 3.15+
+- Clone with `git clone --recursive ...` — Hawk vendors `replxx` as a git submodule. Already cloned without it? Run `git submodule update --init`.
 
-**Linux / macOS**
-
-If you didn't clone with `--recursive`, first run `git submodule update --init`.
+### Linux / macOS
 
 ```bash
-./build.sh                       # release build with sensible defaults
+./build.sh
 ```
 
 Or manually:
@@ -125,9 +124,32 @@ toolchain doesn't support statically linking the system C++ runtime, so the
 resulting binary always dynamically links `libc++`/`libSystem` regardless
 of this option.)
 
-**Windows**
+### Windows
 
-Hawk is regularly built for Windows via MinGW-w64 cross-compilation with static linking. Detailed instructions will be added to the docs.
+Three supported paths, all verified in CI or by hand to produce working,
+statically linked binaries with no external runtime dependencies:
+
+**Cross-compile from Linux:**
+
+```bash
+./build-mingw.sh
+```
+
+**Build natively with MSVC 2022** (from a Developer PowerShell/Command Prompt):
+
+```powershell
+.\build-msvc.ps1
+```
+
+Note: MSVC's generator is multi-config, so the binary lands at `build-msvc\bin\Release\hawk.exe`, not `build-msvc\bin\hawk.exe`.
+
+**Build natively with MinGW-w64** (e.g. via MSYS2):
+
+```powershell
+.\build-mingw.ps1
+```
+
+Requires `g++` and `mingw32-make` on `PATH`.
 
 ## Project layout
 
