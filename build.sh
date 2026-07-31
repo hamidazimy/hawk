@@ -14,6 +14,7 @@ echo "Configuring with CMake..."
 cmake -S .. -B . \
     -DCMAKE_INSTALL_PREFIX=$HOME/.local \
     -DHAWK_STATIC_BUILD=ON \
+    -DHAWK_BUILD_TESTS=OFF \
     -DCMAKE_BUILD_TYPE=Release
 
 # Build

@@ -14,6 +14,7 @@ echo "Configuring with CMake..."
 cmake .. \
     -DCMAKE_TOOLCHAIN_FILE=../mingw-toolchain.cmake \
     -DHAWK_STATIC_BUILD=ON \
+    -DHAWK_BUILD_TESTS=OFF \
     -DCMAKE_BUILD_TYPE=Release
 
 # Build

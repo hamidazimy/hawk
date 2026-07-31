@@ -11,7 +11,7 @@ if (-not (Get-Command cl -ErrorAction SilentlyContinue)) {
 }
 
 Write-Host "Configuring with CMake..."
-cmake -S . -B build-msvc -DCMAKE_BUILD_TYPE=Release -DHAWK_STATIC_BUILD=ON
+cmake -S . -B build-msvc -DCMAKE_BUILD_TYPE=Release -DHAWK_STATIC_BUILD=ON -DHAWK_BUILD_TESTS=OFF
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host ""
