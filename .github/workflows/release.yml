@@ -83,9 +83,8 @@ jobs:
 
       # Same toolchain file and flags as ci.yml's windows-mingw: job,
       # verbatim -- including -DHAWK_BUILD_TESTS=ON and
-      # -DCMAKE_CROSSCOMPILING_EMULATOR=wine, the exact pattern plan 033
-      # proved works. This is deliberately the same build, not a
-      # lighter-weight variant.
+      # -DCMAKE_CROSSCOMPILING_EMULATOR=wine.
+      # This is deliberately the same build, not a lighter-weight variant.
       - name: Configure Windows build
         run: >
           cmake -S . -B build-windows-release
