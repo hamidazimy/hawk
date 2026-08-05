@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <exception>
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -54,6 +55,19 @@ int main(int argc, char* argv[]) {
     if (!args.project_file.empty()) {
         // Project loading is a future feature
         hawk::cli::renderers::render_error({"Project loading is not implemented yet."});
+        hawk::cli::print_usage(argv[0]);
+        return 1;
+    }
+
+    if (!args.no_confirm
+        && !(args.delimiter.has_value() && args.has_header.has_value())
+        && !hawk::cli::console::stdin_is_tty()) {
+        hawk::cli::renderers::render_error({
+            "Hawk can't prompt you to confirm the inferred file format when "
+            "input is piped in.\n" "Add --no-confirm to accept the inferred "
+            "format automatically, or set --delimiter and --header explicitly."
+            "\n"
+        });
         hawk::cli::print_usage(argv[0]);
         return 1;
     }

@@ -6,6 +6,12 @@ All notable changes to Hawk are documented here. The format is based on [Keep a 
 
 ---
 
+## [0.8.1] — 2026-08-05
+
+### Fixed
+
+- Piping a command script into hawk (`hawk logs.csv < script.hawk`) without `--no-confirm` or explicit `--delimiter`/`--header` let the startup confirmation prompt's `std::cin` read consume the script's first line as its Y/n answer, dropping into the modify-config submenu and silently swallowing further lines — the analyst's commands never reached the REPL, with no indication anything had gone wrong. Hawk now detects this exact situation (piped stdin, no explicit format, no `--no-confirm`) before opening the log file and exits with an error naming both ways to fix it, rather than guessing at unverifiable inferred formatting.
+
 ## [0.8.0] — 2026-07-31
 
 This release is about making Hawk run correctly everywhere it claims to. Continuous integration now covers Linux, native and cross-compiled Windows, and macOS — and that coverage surfaced several real portability defects fixed here: an MSVC-only bug that silently accepted impossible calendar dates, two separate build breaks under Clang+libc++, a MinGW cross-compile target that wasn't actually statically linked despite claiming to be, and a macOS-specific compile failure in the console layer, fixed alongside some general console-handling cleanup. Windows also gained two native build paths alongside the existing cross-compile script, and a manually-triggered workflow now publishes tagged release binaries.
